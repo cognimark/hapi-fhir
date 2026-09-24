@@ -1,8 +1,8 @@
 HAPI FHIR
 =========
 
-> **Cognimark development fork:** the `cognimark/8.12.0-long-resource-ids`
-> branch is pinned to upstream 8.12.0. See [the fork contract](cognimark/README.md)
+> **Cognimark development fork:** the `cognimark/8.12.1-long-resource-ids`
+> branch is pinned to upstream 8.12.1. See [the fork contract](cognimark/README.md)
 > for its scope and release gates. Creating this branch does not qualify or
 > deploy a customized runtime.
 

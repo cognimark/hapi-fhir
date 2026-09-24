@@ -92,6 +92,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -100,6 +101,8 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public abstract class BaseStorageDao {
 	private static final Logger ourLog = LoggerFactory.getLogger(BaseStorageDao.class);
+	private static final Pattern RESOURCE_ID_PATTERN =
+			Pattern.compile("[A-Za-z0-9.-]{1," + ResourceTable.FHIR_ID_LENGTH + "}");
 
 	/** @deprecated moved to {@link OperationOutcomeUtil#OO_SEVERITY_ERROR}  */
 	@Deprecated(forRemoval = true, since = "8.4.0")
@@ -206,7 +209,8 @@ public abstract class BaseStorageDao {
 	}
 
 	/**
-	 * Verify that the resource ID is actually valid according to FHIR's rules
+	 * Verify the private repository resource-ID bound and the standard ID alphabet.
+	 * This storage extension does not change strict FHIR primitive validation.
 	 */
 	protected void verifyResourceIdIsValid(IBaseResource theResource) {
 		if (theResource.getIdElement().hasResourceType()) {
@@ -223,7 +227,9 @@ public abstract class BaseStorageDao {
 		}
 
 		if (theResource.getIdElement().hasIdPart()) {
-			if (!theResource.getIdElement().isIdPartValid()) {
+			if (!RESOURCE_ID_PATTERN
+					.matcher(theResource.getIdElement().getIdPart())
+					.matches()) {
 				throw new InvalidRequestException(Msg.code(521)
 						+ getContext()
 								.getLocalizer()

@@ -120,7 +120,8 @@ public class ResourceTable extends BaseHasResource<JpaPid> implements Serializab
 	private static final long serialVersionUID = 1L;
 	public static final int MAX_FORCED_ID_LENGTH = 100;
 	public static final String IDX_RES_TYPE_FHIR_ID = "IDX_RES_TYPE_FHIR_ID";
-	public static final int FHIR_ID_LENGTH = 64;
+	/** Private repository resource-ID bound; the standard FHIR primitive limit remains 64. */
+	public static final int FHIR_ID_LENGTH = 512;
 
 	/**
 	 * Holds the narrative text only - Used for Fulltext searching but not directly stored in the DB
@@ -386,6 +387,7 @@ public class ResourceTable extends BaseHasResource<JpaPid> implements Serializab
 	 */
 	@Column(
 			name = FHIR_ID,
+			// Cognimark extends storage length only; the standard primitive bound is shown below.
 			// [A-Za-z0-9\-\.]{1,64} - https://www.hl7.org/fhir/datatypes.html#id
 			length = FHIR_ID_LENGTH,
 			// we never update this after insert, and the Generator will otherwise "dirty" the object.

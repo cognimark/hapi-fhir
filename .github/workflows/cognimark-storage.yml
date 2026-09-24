@@ -1,0 +1,30 @@
+name: Cognimark storage compatibility
+
+on:
+  push:
+    branches: [cognimark/8.12.1-long-resource-ids]
+  pull_request:
+    branches: [cognimark/8.12.1-long-resource-ids]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  storage-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Build the versioned storage libraries and exercise the contract
+        env:
+          MAVEN_OPTS: -Xmx2g
+        run: >-
+          mvn -B -ntp -pl hapi-fhir-jpaserver-model,hapi-fhir-storage
+          -Dtest=ResourceTableTest,BaseStorageDaoResourceIdTest
+          -Dsurefire.failIfNoSpecifiedTests=false install
