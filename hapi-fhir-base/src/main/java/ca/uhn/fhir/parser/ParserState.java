@@ -1820,6 +1820,7 @@ class ParserState<T> {
 
 	private class XhtmlStateHl7Org extends XhtmlState {
 		private final IBaseXhtml myHl7OrgDatatype;
+		private String myOriginalJsonValue;
 
 		private XhtmlStateHl7Org(BasePreResourceState thePreResourceState, IBaseXhtml theHl7OrgDatatype) {
 			super(thePreResourceState, new XhtmlDt(), true);
@@ -1827,10 +1828,21 @@ class ParserState<T> {
 		}
 
 		@Override
+		public void attributeValue(String theName, String theValue) throws DataFormatException {
+			super.attributeValue(theName, theValue);
+			if (myJsonMode && myContext.getParserOptions().isPreserveJsonXhtmlSource()) {
+				myOriginalJsonValue = theValue;
+			}
+		}
+
+		@Override
 		public void doPop() {
 			// TODO: this is not very efficient
 			String value = getDt().getValueAsString();
 			myHl7OrgDatatype.setValueAsString(value);
+			if (myOriginalJsonValue != null) {
+				JsonXhtmlSource.capture(myHl7OrgDatatype, myOriginalJsonValue);
+			}
 
 			super.doPop();
 		}

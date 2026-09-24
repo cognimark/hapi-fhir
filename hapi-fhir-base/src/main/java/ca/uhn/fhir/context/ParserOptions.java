@@ -43,11 +43,37 @@ import java.util.stream.Collectors;
 public class ParserOptions {
 
 	private boolean myStripVersionsFromReferences = true;
+	private boolean myPreserveJsonXhtmlSource;
 	private Set<String> myDontStripVersionsFromReferencesAtPaths = Collections.emptySet();
 	private boolean myOverrideResourceIdWithBundleEntryFullUrl = true;
 	private boolean myAutoContainReferenceTargetsWithNoId = true;
 	private Set<String> myEncodeElementsForSummaryMode = null;
 	private Set<String> myDontEncodeElementsForSummaryMode = null;
+
+	/**
+	 * Whether an unmodified XHTML primitive parsed from JSON retains its original
+	 * string when encoded as JSON. Disabled by default. The XHTML is still parsed
+	 * normally; this option does not bypass parsing or validation. XML encoding
+	 * and narratives constructed or modified through the model are unchanged.
+	 *
+	 * @return {@code true} when JSON XHTML source preservation is enabled
+	 */
+	public boolean isPreserveJsonXhtmlSource() {
+		return myPreserveJsonXhtmlSource;
+	}
+
+	/**
+	 * Enable lexical preservation of unmodified JSON XHTML primitives, for
+	 * repositories that must retain original narrative strings rather than
+	 * reformat character references, quoting or whitespace.
+	 *
+	 * @param thePreserveJsonXhtmlSource whether to preserve the original string
+	 * @return this options object
+	 */
+	public ParserOptions setPreserveJsonXhtmlSource(boolean thePreserveJsonXhtmlSource) {
+		myPreserveJsonXhtmlSource = thePreserveJsonXhtmlSource;
+		return this;
+	}
 
 	/**
 	 * If set to {@literal true} (which is the default), contained resources may be specified by

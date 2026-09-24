@@ -21,6 +21,9 @@ public class VersionEnumTest {
 
 		version = version.replaceAll("-PRE[0-9]+", "");
 		version = version.replace("-SNAPSHOT", "");
+		// The private artifact keeps its upstream compatibility version and an
+		// explicit distribution suffix; it must still resolve the upstream enum.
+		version = version.replaceFirst("-cognimark\\.[0-9]+$", "");
 
 		String[] parts = version.split("\\.");
 		assertEquals(3, parts.length);

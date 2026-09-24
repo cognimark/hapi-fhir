@@ -21,6 +21,12 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
+      - name: Build the source-preserving parser and test narrative round trips
+        env:
+          MAVEN_OPTS: -Xmx2g -XX:ActiveProcessorCount=2
+        run: |
+          mvn -B -ntp -f hapi-fhir-base/pom.xml install
+          mvn -B -ntp -f cognimark/narrative-tests/pom.xml test
       - name: Build the versioned storage libraries and exercise the contract
         env:
           MAVEN_OPTS: -Xmx2g

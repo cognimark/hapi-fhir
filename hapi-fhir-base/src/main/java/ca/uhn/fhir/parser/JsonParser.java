@@ -430,10 +430,14 @@ public class JsonParser extends BaseParser implements IJsonLikeParser {
 			case PRIMITIVE_XHTML: {
 				if (!isSuppressNarratives()) {
 					IPrimitiveType<?> dt = (IPrimitiveType<?>) theNextValue;
+					String value = dt.getValueAsString();
+					if (getContext().getParserOptions().isPreserveJsonXhtmlSource()) {
+						value = JsonXhtmlSource.forEncoding(dt, value);
+					}
 					if (theChildName != null) {
-						write(theEventWriter, theChildName, dt.getValueAsString());
+						write(theEventWriter, theChildName, value);
 					} else {
-						theEventWriter.write(dt.getValueAsString());
+						theEventWriter.write(value);
 					}
 				} else {
 					if (theChildName != null) {

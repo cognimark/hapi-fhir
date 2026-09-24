@@ -11,6 +11,7 @@
 	</parent>
 
 	<artifactId>hapi-fhir-base</artifactId>
+	<version>8.12.1-cognimark.2</version>
 	<packaging>bundle</packaging>
 
 	<url>https://hapifhir.io/</url>

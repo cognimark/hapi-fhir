@@ -1,8 +1,10 @@
 # Cognimark HAPI core fork
 
-Status, September 24, 2026: the 8.12.1 storage customization and focused Maven
-tests are implemented. Application-image qualification, coordinated schema
-rollout and production activation remain pending.
+Status, September 24, 2026: Core has deployed the long-ID source-built ARM64
+runtime on the existing shared HAPI host after explicit schema widening.
+Independent source readback then identified an XHTML lexical-preservation gap.
+The parser change below is a candidate, not yet a deployed or accepted fix.
+Product refresh activation remains a separate coordinated Core/Agent/KG gate.
 
 ## Baseline and ownership
 
@@ -26,7 +28,7 @@ Cognimark runtime is not a source baseline for this work.
 ## Approved compatibility target
 
 Preserve upstream resource IDs and references without identity translation.
-The private database-partitioned storage path will accept resource IDs using
+The private database-partitioned storage path accepts resource IDs using
 `[A-Za-z0-9.-]` with a maximum length of 512. This is an intentional private
 storage extension, not a claim that IDs above 64 conform to the FHIR standard.
 Do not broaden version IDs, ETags, the global FHIR validator or the ID alphabet.
@@ -57,10 +59,11 @@ setup and its documentation were prepared with Codex assistance.
 
 ## Build and focused verification
 
-Only `hapi-fhir-jpaserver-model` and `hapi-fhir-storage` are custom artifacts,
-versioned `8.12.1-cognimark.1`. Their other upstream dependencies remain 8.12.1.
+The model and storage artifacts remain `8.12.1-cognimark.1`. The new
+`hapi-fhir-base` artifact is `8.12.1-cognimark.2`; other upstream dependencies
+remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
-The starter explicitly selects both custom artifacts with dependency management.
+The starter explicitly selects all three custom artifacts with dependency management.
 
 From a clean checkout, using Java 17 and Maven:
 
@@ -75,3 +78,42 @@ cases before the source change. All 21 selected tests then passed, including
 the actual entity annotations, boundary rejection and unchanged strict
 primitive validation. Maven packaging and duplicate-class checks also passed.
 This is not a claim that every upstream test or the production runtime passed.
+
+## JSON XHTML source preservation
+
+The upstream R4 XHTML model parses and re-encodes narrative strings. This can
+convert numeric character references into literal characters, change quoting,
+and rewrite empty-element syntax even when no application edits the narrative.
+For example, `&#13;&#10;` becomes literal CR/LF. That violates Core's stricter
+original-string comparison, even where the displayed narrative is unchanged.
+
+`ParserOptions.setPreserveJsonXhtmlSource(true)` opts a context into lexical
+preservation for JSON-parsed, unmodified XHTML values. The usual parser runs
+first and malformed XHTML still fails there. Only after successful parsing is
+the original string attached to that value together with its initial model
+serialization. JSON encoding uses the original only while that serialization
+is unchanged. A model edit invalidates the retained representation; newly
+constructed narratives use the ordinary encoder. XML output is unchanged.
+The option is off by default; the private starter enables it on managed FHIR
+contexts before use. No hash normalization, extra database, retrieval fallback
+or source-ID translation is introduced.
+
+The marker is in-memory parser metadata. JSON storage retains the original
+narrative itself, not a second stored body. A model-level deep copy that discards
+user data does not inherit this lexical marker; HTTP transaction, history,
+search and restart behavior must be qualified against the packaged service.
+Existing rewritten historical strings cannot be reconstructed by installing
+the new parser. Any repair must use retained original evidence, create a new
+conditional version, preserve old history and explicitly reconcile its journal.
+
+```sh
+mvn -B -ntp -f hapi-fhir-base/pom.xml install
+mvn -B -ntp -f cognimark/narrative-tests/pom.xml test
+```
+
+The synthetic baseline failed three of four narrative round-trip cases before
+the change. The candidate passes all twelve focused checks, including model
+edits, opt-out, malformed input and independent values in one bundle, plus all
+564 base-module tests. The version-enum test recognizes the explicit private
+distribution suffix while still checking the upstream compatibility enum.
+These unit checks alone do not qualify persisted service behavior.
