@@ -1,9 +1,10 @@
 # Cognimark HAPI core fork
 
-Status, September 24, 2026: Core has deployed the long-ID source-built ARM64
-runtime on the existing shared HAPI host after explicit schema widening.
-Independent source readback then identified an XHTML lexical-preservation gap.
-The parser change below is a candidate, not yet a deployed or accepted fix.
+Status, September 24, 2026: Core has deployed the source-built ARM64 runtime
+with original long-ID storage and JSON XHTML preservation on the existing
+shared HAPI host. The parser fix passes native runtime acceptance and an
+evidence-preserving correction of one previously rewritten narrative. The old
+historical version and immutable input/commit evidence remain unchanged.
 Product refresh activation remains a separate coordinated Core/Agent/KG gate.
 
 ## Baseline and ownership
@@ -116,4 +117,10 @@ the change. The candidate passes all twelve focused checks, including model
 edits, opt-out, malformed input and independent values in one bundle, plus all
 564 base-module tests. The version-enum test recognizes the explicit private
 distribution suffix while still checking the upstream compatibility enum.
-These unit checks alone do not qualify persisted service behavior.
+These unit checks alone do not qualify persisted service behavior. The packaged
+runtime additionally passes Core's actual PostgreSQL/HAPI TLS upgrade, conditional
+update, transaction, search and restart test. Its complete Core ingest/refresh
+regression passes 1,535 checks with eight unrelated opt-in skips. Native ARM64
+acceptance verifies lexical preservation, tenant isolation, decimal precision
+and stale-write rejection. These are bounded runtime/input qualifications, not
+a claim of passing every upstream test or activating the product refresh route.
