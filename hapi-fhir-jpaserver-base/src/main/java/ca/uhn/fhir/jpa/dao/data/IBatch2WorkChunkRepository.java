@@ -20,6 +20,7 @@
 package ca.uhn.fhir.jpa.dao.data;
 
 import ca.uhn.fhir.batch2.model.BatchWorkChunkStatusDTO;
+import ca.uhn.fhir.batch2.model.StatusEnum;
 import ca.uhn.fhir.batch2.model.WorkChunkStatusEnum;
 import ca.uhn.fhir.jpa.entity.Batch2WorkChunkEntity;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +37,22 @@ import java.util.stream.Stream;
 
 public interface IBatch2WorkChunkRepository
 		extends JpaRepository<Batch2WorkChunkEntity, String>, IHapiFhirJpaRepository {
+
+	/** Only for startup of an exclusively owned local broker, before maintenance starts. */
+	@Modifying
+	@Query("UPDATE Batch2WorkChunkEntity c SET c.myStatus = :ready, c.myLastHeartbeat = null "
+			+ "WHERE c.myInstanceId = :instanceId AND c.myStatus IN :lostStates AND c.myCreateTime < :contextStart "
+			+ "AND (:stepId IS NULL OR c.myTargetStepId = :stepId) "
+			+ "AND EXISTS (SELECT j.myId FROM Batch2JobInstanceEntity j WHERE j.myId = c.myInstanceId "
+			+ "AND j.myStatus IN :activeStates AND j.myCancelled = false "
+			+ "AND (j.myCurrentGatedStepId IS NULL OR j.myCurrentGatedStepId = c.myTargetStepId))")
+	int restoreLocalDispatchability(
+			@Param("instanceId") String theInstanceId,
+			@Param("stepId") String theStepId,
+			@Param("contextStart") Date theContextStart,
+			@Param("activeStates") Set<StatusEnum> theActiveStates,
+			@Param("lostStates") Set<WorkChunkStatusEnum> theLostStates,
+			@Param("ready") WorkChunkStatusEnum theReadyState);
 
 	// NOTE we need a stable sort so paging is reliable.
 	// Warning: mySequence is not unique - it is reset for every chunk.  So we also sort by myId.

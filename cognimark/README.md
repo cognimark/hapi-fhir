@@ -62,9 +62,11 @@ setup and its documentation were prepared with Codex assistance.
 
 The model and storage artifacts remain `8.12.1-cognimark.1`. The
 `hapi-fhir-base` artifact is `8.12.1-cognimark.2`. The scheduler (`hapi-fhir-jpa`)
-and Batch2 artifacts use `8.12.1-cognimark.3`; other upstream dependencies remain 8.12.1.
+and Batch2 artifacts use `8.12.1-cognimark.3`. The in-development
+`hapi-fhir-jpaserver-base` artifact uses `8.12.1-cognimark.4`; other upstream
+dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
-The starter explicitly selects all five custom artifacts with dependency management.
+The starter must explicitly select each qualified custom artifact with dependency management.
 
 ## Batch2 heartbeat lifecycle
 
@@ -92,7 +94,45 @@ against the official baseline. All eight checks pass with the patch: explicit
 and default groups, success and exception cleanup, repeated cancellation without
 affecting another chunk, absent chunks, active ticks stopping after close, and
 DEBUG-only registration. The scheduler module's six tests and Batch2's 215 tests
-also pass. Core separately qualifies persisted reindex recovery across restart.
+also pass. The original small restart test covered a completed discovery gate,
+not a populated local queue. Production showed that already QUEUED notices are
+lost with the in-memory broker; the expanded Core regression must also interrupt
+queued and executing work before claiming general restart recovery.
+
+## Local work recovery and partition-aware reindex (candidate)
+
+`LocalBatch2WorkRecovery` is an explicit single-owner deployment facility, not
+automatic cluster failover. Invoke it once before native scheduling starts and
+only with the local `LinkedBlockingBrokerClient`, after the previous database
+owner has exited. It restores unfinished pre-boot work in the job's current
+step to READY; native maintenance owns subsequent dispatch and bounded queue
+backpressure. Completed chunks, payloads, retries, parameters, future gates,
+cancelled/failed jobs and current-boot work are not reset. No periodic recovery
+poller or second queue is introduced. Durable brokers own their own redelivery
+and are rejected by this facility. This source change still requires packaged
+restart qualification before production use.
+
+Search-parameter reindex now carries the persisted source partition in its
+system request, including writes of missing reference placeholders. It does
+not select a default tenant when the resource has an explicit partition, loosen
+partition isolation, or change clinical JSON and history.
+
+Focused verification runs 15 persistence/recovery checks, including the four
+partition-context cases. The standalone partition suite fails all four cases
+against official 8.12.1 (missing request partition) and passes all four against
+the candidate. Core's first packaged runtime check also passes interruption
+with queued/executing work, same-job continuation, tenant-local placeholder
+creation, working reference search, and exact historical reads. These local
+checks are not production rollout acceptance.
+
+```sh
+mvn -B -ntp -f hapi-fhir-jpaserver-base/pom.xml \
+  -Dtest=LocalBatch2WorkRecoveryTest,ReindexPartitionContextTest,JpaJobPersistenceImplTest install
+mvn -B -ntp -f cognimark/reindex-tests/pom.xml test
+# Baseline: expected assertion failures, not dependency or compilation errors.
+mvn -B -ntp -f cognimark/reindex-tests/pom.xml \
+  -Dcognimark.hapi.persistence.version=8.12.1 test
+```
 
 From a clean checkout, using Java 17 and Maven:
 

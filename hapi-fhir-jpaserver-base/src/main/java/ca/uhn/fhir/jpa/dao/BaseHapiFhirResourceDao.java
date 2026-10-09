@@ -2045,6 +2045,12 @@ public abstract class BaseHapiFhirResourceDao<T extends IBaseResource> extends B
 		}
 
 		SystemRequestDetails request = new SystemRequestDetails();
+		// Reindex can create missing reference targets. Those writes must use the
+		// source resource's partition, not an unscoped system request.
+		request.setRequestPartitionId(
+				theEntity.getPartitionId() == null
+						? myPartitionSettings.getDefaultRequestPartitionId()
+						: theEntity.getPartitionId().toPartitionId());
 		request.getUserData().put(JpaConstants.SKIP_REINDEX_ON_UPDATE, Boolean.TRUE);
 
 		updateEntity(
