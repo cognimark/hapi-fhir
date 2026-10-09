@@ -68,6 +68,10 @@ use `8.12.1-cognimark.6`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 The starter must explicitly select each qualified custom artifact with dependency management.
+The focused CI workflow uses the same digest-pinned Maven 3.9.12 / Java 17
+container as the starter and image build. Do not depend on the hosted runner's
+ambient Maven version: newer model validation rejects duplicate plugin entries
+in the upstream JPA POM before the selected tests can execute.
 
 ## Transaction-local reference prefetch
 
