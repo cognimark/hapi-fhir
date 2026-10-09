@@ -60,11 +60,39 @@ setup and its documentation were prepared with Codex assistance.
 
 ## Build and focused verification
 
-The model and storage artifacts remain `8.12.1-cognimark.1`. The new
-`hapi-fhir-base` artifact is `8.12.1-cognimark.2`; other upstream dependencies
-remain 8.12.1.
+The model and storage artifacts remain `8.12.1-cognimark.1`. The
+`hapi-fhir-base` artifact is `8.12.1-cognimark.2`. The scheduler (`hapi-fhir-jpa`)
+and Batch2 artifacts use `8.12.1-cognimark.3`; other upstream dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
-The starter explicitly selects all three custom artifacts with dependency management.
+The starter explicitly selects all five custom artifacts with dependency management.
+
+## Batch2 heartbeat lifecycle
+
+The scheduler may assign a default group during job registration. Batch2 must
+capture its cancellation key **after** registration; otherwise completed chunks
+keep a trigger in the actual group while cancellation targets Quartz's `DEFAULT`
+group. The `cognimark.3` patch resolves the key after registration. It does not
+disable active heartbeats, alter chunk recovery, or change stored clinical data.
+Already leaked in-memory triggers require a process restart; persisted jobs and
+checkpoints remain the source of recovery. Do not edit Batch2 rows to clear them.
+
+Per-job registration details (interval and cron) are DEBUG, not INFO. Scheduler
+lifecycle, errors and job progress keep their existing levels. Heartbeat execution
+does not log SQL or a per-tick message at the normal production log level.
+
+```sh
+mvn -B -ntp -f hapi-fhir-jpa/pom.xml install
+mvn -B -ntp -f hapi-fhir-storage-batch2/pom.xml install
+mvn -B -ntp -f cognimark/batch2-tests/pom.xml test
+```
+
+The focused suite runs the real Spring/Quartz scheduler against packaged JARs.
+Override `-Dcognimark.hapi.batch.version=8.12.1` to reproduce six failing checks
+against the official baseline. All eight checks pass with the patch: explicit
+and default groups, success and exception cleanup, repeated cancellation without
+affecting another chunk, absent chunks, active ticks stopping after close, and
+DEBUG-only registration. The scheduler module's six tests and Batch2's 215 tests
+also pass. Core separately qualifies persisted reindex recovery across restart.
 
 From a clean checkout, using Java 17 and Maven:
 

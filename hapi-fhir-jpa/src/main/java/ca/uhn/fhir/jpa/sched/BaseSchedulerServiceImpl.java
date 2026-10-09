@@ -270,14 +270,14 @@ public abstract class BaseSchedulerServiceImpl implements ISchedulerService {
 
 		defaultGroup(theJobDefinition);
 		if (theIntervalMillis != null) {
-			ourLog.info(
+			ourLog.debug(
 					"Scheduling {} job {} with interval {}",
 					theInstanceName,
 					theJobDefinition.getId(),
 					StopWatch.formatMillis(theIntervalMillis));
 			theScheduler.scheduleJob(theIntervalMillis, theJobDefinition);
 		} else {
-			ourLog.info(
+			ourLog.debug(
 					"Scheduling {} job {} with cron expression {}",
 					theInstanceName,
 					theJobDefinition.getId(),
