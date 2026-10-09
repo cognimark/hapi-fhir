@@ -16,8 +16,14 @@ jobs:
     timeout-minutes: 15
     container:
       image: docker.io/library/maven:3.9.12-eclipse-temurin-17@sha256:a0603aab698040d9c94259f379ec0487da1678560748d6c7508483034033c53d
+    defaults:
+      run:
+        working-directory: .cognimark-hapi-core
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Match the starter's container-owned checkout; retain Git's ownership checks.
+          path: .cognimark-hapi-core
       - name: Verify the production builder toolchain
         run: mvn --version
       - name: Build the source-preserving parser and test narrative round trips
