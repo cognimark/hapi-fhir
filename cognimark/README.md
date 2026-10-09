@@ -99,7 +99,7 @@ not a populated local queue. Production showed that already QUEUED notices are
 lost with the in-memory broker; the expanded Core regression must also interrupt
 queued and executing work before claiming general restart recovery.
 
-## Local work recovery and partition-aware reindex (candidate)
+## Local work recovery and partition-aware reindex
 
 `LocalBatch2WorkRecovery` is an explicit single-owner deployment facility, not
 automatic cluster failover. Invoke it once before native scheduling starts and
@@ -124,6 +124,13 @@ the candidate. Core's first packaged runtime check also passes interruption
 with queued/executing work, same-job continuation, tenant-local placeholder
 creation, working reference search, and exact historical reads. These local
 checks are not production rollout acceptance.
+
+Core accepted the source-pinned `.4` runtime replacement on October 9, 2026,
+after full AMD64 and emulated ARM64 runtime checks. Production startup restored
+21,457 unfinished chunks, preserving the original 28 BSC jobs and sampled
+completed checkpoints. Full-population reindex completion and the separate
+historical-error repair remain Core acceptance tasks, not claims of these unit
+tests. Core's `docs/hapi-reindex.md` owns the deployment and measurement receipts.
 
 ```sh
 mvn -B -ntp -f hapi-fhir-jpaserver-base/pom.xml \
