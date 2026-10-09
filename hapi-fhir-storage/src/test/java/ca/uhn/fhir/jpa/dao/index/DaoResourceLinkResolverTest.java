@@ -3,6 +3,7 @@ package ca.uhn.fhir.jpa.dao.index;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.interceptor.api.IInterceptorBroadcaster;
 import ca.uhn.fhir.interceptor.executor.InterceptorService;
+import ca.uhn.fhir.interceptor.model.RequestPartitionId;
 import ca.uhn.fhir.jpa.api.config.JpaStorageSettings;
 import ca.uhn.fhir.jpa.api.dao.DaoRegistry;
 import ca.uhn.fhir.jpa.api.dao.IFhirResourceDao;
@@ -10,13 +11,17 @@ import ca.uhn.fhir.jpa.api.model.DaoMethodOutcome;
 import ca.uhn.fhir.jpa.api.svc.IIdHelperService;
 import ca.uhn.fhir.jpa.model.dao.JpaPid;
 import ca.uhn.fhir.jpa.model.entity.ResourceTable;
+import ca.uhn.fhir.jpa.model.entity.PartitionablePartitionId;
 import ca.uhn.fhir.jpa.model.util.JpaConstants;
+import ca.uhn.fhir.jpa.searchparam.extractor.PathAndRef;
+import ca.uhn.fhir.jpa.searchparam.extractor.ReindexBatchPrefetch;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.api.server.SystemRequestDetails;
 import ca.uhn.fhir.rest.api.server.storage.TransactionDetails;
 import ca.uhn.fhir.util.CanonicalIdentifier;
 import ca.uhn.fhir.util.UrlUtil;
 import org.hl7.fhir.r4.model.Observation;
+import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Reference;
 import org.junit.jupiter.api.Test;
@@ -30,6 +35,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,6 +43,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,6 +69,56 @@ class DaoResourceLinkResolverTest {
 
 	@InjectMocks
 	private DaoResourceLinkResolver<JpaPid> myResolver;
+
+	@Test
+	void incomingReindexReferenceUsesTheValidatedPositivePrefetchWithoutAnotherQuery() {
+		TransactionDetails transaction = new TransactionDetails();
+		RequestPartitionId partition = RequestPartitionId.fromPartitionId(1001);
+		ResourceTable source = referenceEntity("Observation", "source", 1L);
+		ResourceTable target = referenceEntity("Patient", "target", 2L);
+		Observation body = new Observation().setSubject(new Reference("Patient/target"));
+		when(myIdHelperService.resolveResourceIdentities(eq(partition), any(), any()))
+				.thenReturn(Map.of(new IdType("Patient/target"), target));
+		when(myIdHelperService.newPid(2L, 1001)).thenReturn(new JpaPid(1001, 2L));
+		ReindexBatchPrefetch.prefetch(transaction, List.of(source), ignored -> body, myContext, myIdHelperService, partition);
+
+		var result = myResolver.findTargetResource(body, partition, "Observation",
+				new PathAndRef("subject", "Observation.subject", body.getSubject(), false), new SystemRequestDetails(), transaction);
+
+		assertThat(result).isSameAs(target);
+		assertThat(transaction.getResolvedResourceId(new IdType("Patient/target"))).isEqualTo(target.getPersistentId());
+		verify(myIdHelperService, never()).resolveResourceIdentity(any(), any(), any(), any());
+	}
+
+	@Test
+	void invalidatedReindexTargetStillUsesNativeResolution() {
+		TransactionDetails transaction = new TransactionDetails();
+		RequestPartitionId partition = RequestPartitionId.fromPartitionId(1001);
+		ResourceTable source = referenceEntity("Observation", "source", 1L);
+		ResourceTable target = referenceEntity("Patient", "target", 2L);
+		Observation body = new Observation().setSubject(new Reference("Patient/target"));
+		when(myIdHelperService.resolveResourceIdentities(eq(partition), any(), any()))
+				.thenReturn(Map.of(new IdType("Patient/target"), target));
+		when(myIdHelperService.resolveResourceIdentity(eq(partition), eq("Patient"), eq("target"), any())).thenReturn(target);
+		when(myIdHelperService.newPid(2L, 1001)).thenReturn(new JpaPid(1001, 2L));
+		ReindexBatchPrefetch.prefetch(transaction, List.of(source), ignored -> body, myContext, myIdHelperService, partition);
+		ReindexBatchPrefetch.invalidate(transaction, target);
+
+		var result = myResolver.findTargetResource(body, partition, "Observation",
+				new PathAndRef("subject", "Observation.subject", body.getSubject(), false), new SystemRequestDetails(), transaction);
+
+		assertThat(result).isSameAs(target);
+		verify(myIdHelperService).resolveResourceIdentity(eq(partition), eq("Patient"), eq("target"), any());
+	}
+
+	private ResourceTable referenceEntity(String theType, String theId, long thePid) {
+		ResourceTable entity = new ResourceTable();
+		entity.setResourceType(theType);
+		entity.setFhirId(theId);
+		entity.setId(new JpaPid(1001, thePid));
+		entity.setPartitionId(PartitionablePartitionId.with(1001, null));
+		return entity;
+	}
 
 	@ParameterizedTest
 	@MethodSource("getLinkResolutionTestCases")

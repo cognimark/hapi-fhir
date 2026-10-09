@@ -74,6 +74,7 @@ import ca.uhn.fhir.jpa.search.cache.SearchCacheStatusEnum;
 import ca.uhn.fhir.jpa.searchparam.MatchUrlService;
 import ca.uhn.fhir.jpa.searchparam.ResourceSearch;
 import ca.uhn.fhir.jpa.searchparam.SearchParameterMap;
+import ca.uhn.fhir.jpa.searchparam.extractor.ReindexBatchPrefetch;
 import ca.uhn.fhir.jpa.update.UpdateParameters;
 import ca.uhn.fhir.jpa.util.MemoryCacheService;
 import ca.uhn.fhir.jpa.util.QueryChunker;
@@ -1998,7 +1999,8 @@ public abstract class BaseHapiFhirResourceDao<T extends IBaseResource> extends B
 	private boolean reindexSearchParameters(
 			ResourceTable entity, ReindexOutcome theReindexOutcome, TransactionDetails theTransactionDetails) {
 		try {
-			T resource = (T) myJpaStorageResourceParser.toResource(entity, false);
+			T resource = (T) ReindexBatchPrefetch.takeResource(
+					theTransactionDetails, entity, value -> myJpaStorageResourceParser.toResource(value, false));
 			reindexSearchParameters(resource, entity, theTransactionDetails);
 			return true;
 		} catch (Exception e) {

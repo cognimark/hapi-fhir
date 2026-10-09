@@ -35,6 +35,7 @@ import ca.uhn.fhir.jpa.model.dao.JpaPid;
 import ca.uhn.fhir.jpa.model.entity.BasePartitionable;
 import ca.uhn.fhir.jpa.model.entity.BaseResourceIndexedSearchParam;
 import ca.uhn.fhir.jpa.model.entity.IResourceIndexComboSearchParameter;
+import ca.uhn.fhir.jpa.model.entity.IdAndPartitionId;
 import ca.uhn.fhir.jpa.model.entity.PartitionablePartitionId;
 import ca.uhn.fhir.jpa.model.entity.ResourceIndexedComboStringUnique;
 import ca.uhn.fhir.jpa.model.entity.ResourceIndexedComboTokenNonUnique;
@@ -61,7 +62,6 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
 import org.hl7.fhir.instance.model.api.IBaseReference;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.instance.model.api.IIdType;
@@ -573,6 +573,8 @@ public class SearchParamExtractorService implements ISearchParamExtractorSvc {
 			RequestDetails theRequest,
 			ISearchParamExtractor.SearchParamSet<PathAndRef> theIndexedReferences) {
 		String sourceResourceName = myContext.getResourceType(theResource);
+		ExistingResourceLinkMatcher existingLinks =
+				new ExistingResourceLinkMatcher(theExistingParams.getResourceLinks(), theTransactionDetails);
 
 		for (PathAndRef nextPathAndRef : theIndexedReferences) {
 			if (nextPathAndRef.getRef() != null) {
@@ -586,7 +588,7 @@ public class SearchParamExtractorService implements ISearchParamExtractorSvc {
 						ISearchParamRegistry.SearchParamLookupContextEnum.INDEX);
 				extractResourceLinks(
 						theRequestPartitionId,
-						theExistingParams,
+						existingLinks,
 						theNewParams,
 						theResource,
 						theEntity,
@@ -604,7 +606,7 @@ public class SearchParamExtractorService implements ISearchParamExtractorSvc {
 
 	private void extractResourceLinks(
 			RequestPartitionId theRequestPartitionId,
-			ResourceIndexedSearchParams theExistingParams,
+			ExistingResourceLinkMatcher theExistingLinks,
 			ResourceIndexedSearchParams theNewParams,
 			IBaseResource theResource,
 			ResourceTable theEntity,
@@ -764,13 +766,12 @@ public class SearchParamExtractorService implements ISearchParamExtractorSvc {
 
 			/*
 			 * We need to obtain a resourceLink out of the provided {@literal thePathAndRef}.  In the case
-			 * where we are updating a resource that already has resourceLinks (stored in {@literal theExistingParams.getResourceLinks()}),
+			 * where we are updating a resource that already has resourceLinks,
 			 * let's try to match thePathAndRef to an already existing resourceLink to avoid the
 			 * very expensive operation of creating a resourceLink that would end up being exactly the same
 			 * one we already have.
 			 */
-			Optional<ResourceLink> optionalResourceLink =
-					findMatchingResourceLink(thePathAndRef, theExistingParams.getResourceLinks());
+			Optional<ResourceLink> optionalResourceLink = theExistingLinks.find(thePathAndRef);
 			if (optionalResourceLink.isPresent()) {
 				resourceLink = optionalResourceLink.get();
 			} else {
@@ -817,71 +818,83 @@ public class SearchParamExtractorService implements ISearchParamExtractorSvc {
 		theNewParams.myLinks.add(resourceLink);
 	}
 
-	@SuppressWarnings("OptionalAssignedToNull")
-	private Optional<ResourceLink> findMatchingResourceLink(
-			PathAndRef thePathAndRef, Collection<ResourceLink> theResourceLinks) {
-		IIdType referenceElement = thePathAndRef.getRef().getReferenceElement();
-		List<ResourceLink> resourceLinks = new ArrayList<>(theResourceLinks);
+	/** Lazy per-resource index: translate target IDs and group links once, not once per incoming reference. */
+	final class ExistingResourceLinkMatcher {
+		private final Collection<ResourceLink> myLinks;
+		private final TransactionDetails myTransaction;
+		private Map<ResourceLinkKey, List<ResourceLink>> myIndex;
 
-		if (thePathAndRef.isCanonical()) {
-			return resourceLinks.stream()
-					.filter(r -> r.getTargetResourceUrl() != null
-							&& r.getTargetResourceUrl().equals(thePathAndRef.getPath()))
+		ExistingResourceLinkMatcher(Collection<ResourceLink> theLinks, TransactionDetails theTransaction) {
+			myLinks = theLinks;
+			myTransaction = theTransaction;
+		}
+
+		Optional<ResourceLink> find(PathAndRef theReference) {
+			if (theReference.isCanonical()) {
+				return myLinks.stream()
+						.filter(link -> link.getTargetResourceUrl() != null
+								&& link.getTargetResourceUrl().equals(theReference.getPath()))
+						.findFirst();
+			}
+			if (myIndex == null) {
+				buildIndex();
+			}
+			IIdType id = theReference.getRef().getReferenceElement();
+			List<ResourceLink> matches =
+					myIndex.get(new ResourceLinkKey(theReference.getPath(), id.getResourceType(), id.getIdPart()));
+			if (matches == null) {
+				return Optional.empty();
+			}
+			return matches.stream()
+					.filter(link -> myContext.getParserOptions().isStripVersionsFromReferences()
+							|| id.getVersionIdPartAsLong() == null
+							|| id.getVersionIdPartAsLong().equals(link.getTargetResourceVersion()))
 					.findFirst();
 		}
 
-		Set<JpaPid> pids = new HashSet<>();
-		for (ResourceLink resourceLink : resourceLinks) {
-			JpaPid targetResourceJpaPid = resourceLink.getTargetResourcePk();
-			if (targetResourceJpaPid != null) {
-				pids.add(targetResourceJpaPid);
+		private void buildIndex() {
+			myIndex = new HashMap<>();
+			Set<JpaPid> missing = new HashSet<>();
+			Map<IdAndPartitionId, String> identities = new HashMap<>();
+			Map<IdAndPartitionId, String> prefetched =
+					myTransaction.getUserData(ReindexBatchPrefetch.EXISTING_REFERENCE_IDS);
+			for (ResourceLink link : myLinks) {
+				JpaPid pid = link.getTargetResourcePk();
+				if (pid != null) {
+					IdAndPartitionId key = new IdAndPartitionId(pid.getId(), pid.getPartitionId());
+					String id = prefetched == null ? null : prefetched.get(key);
+					if (id != null) {
+						identities.put(key, id);
+					} else {
+						missing.add(pid);
+					}
+				}
+			}
+			if (!missing.isEmpty()) {
+				PersistentIdToForcedIdMap<JpaPid> resolved = myIdHelperService.translatePidsToForcedIds(missing);
+				resolved.getResourcePersistentIdOptionalMap().forEach((pid, id) -> {
+					if (id != null) {
+						id.ifPresent(value ->
+								identities.put(new IdAndPartitionId(pid.getId(), pid.getPartitionId()), value));
+					}
+				});
+			}
+			for (ResourceLink link : myLinks) {
+				JpaPid pid = link.getTargetResourcePk();
+				if (pid == null) {
+					continue;
+				}
+				String id = identities.get(new IdAndPartitionId(pid.getId(), pid.getPartitionId()));
+				if (id != null) {
+					ResourceLinkKey key = new ResourceLinkKey(
+							link.getSourcePath(), link.getTargetResourceType(), id.substring(id.indexOf('/') + 1));
+					myIndex.computeIfAbsent(key, ignored -> new ArrayList<>()).add(link);
+				}
 			}
 		}
-
-		if (pids.isEmpty()) {
-			return Optional.empty();
-		}
-
-		PersistentIdToForcedIdMap<JpaPid> targetResourceIdMap = myIdHelperService.translatePidsToForcedIds(pids);
-
-		for (ResourceLink resourceLink : resourceLinks) {
-
-			// comparing the searchParam path ex: Group.member.entity
-			boolean hasMatchingSearchParamPath =
-					Strings.CS.equals(resourceLink.getSourcePath(), thePathAndRef.getPath());
-
-			boolean hasMatchingResourceType =
-					Strings.CS.equals(resourceLink.getTargetResourceType(), referenceElement.getResourceType());
-
-			boolean hasMatchingResourceId = false;
-			Optional<String> idPartOpt = targetResourceIdMap.get(resourceLink.getTargetResourcePk());
-
-			// DON'T REMOVE THIS CHECK:  In some circumstances, clinical-reasoning code will trigger a null value here:
-			if (idPartOpt == null) {
-				ourLog.warn("Cannot find id: {} in the target resource ID Map", resourceLink.getTargetResourcePk());
-				idPartOpt = Optional.empty();
-			}
-
-			if (idPartOpt.isPresent()) {
-				String idPart = idPartOpt.get();
-				idPart = idPart.substring(idPart.indexOf('/') + 1);
-				hasMatchingResourceId = Strings.CS.equals(idPart, referenceElement.getIdPart());
-			}
-
-			boolean hasMatchingResourceVersion = myContext.getParserOptions().isStripVersionsFromReferences()
-					|| referenceElement.getVersionIdPartAsLong() == null
-					|| referenceElement.getVersionIdPartAsLong().equals(resourceLink.getTargetResourceVersion());
-
-			if (hasMatchingSearchParamPath
-					&& hasMatchingResourceType
-					&& hasMatchingResourceId
-					&& hasMatchingResourceVersion) {
-				return Optional.of(resourceLink);
-			}
-		}
-
-		return Optional.empty();
 	}
+
+	private record ResourceLinkKey(String path, String type, String id) {}
 
 	private void extractResourceLinksForContainedResources(
 			RequestPartitionId theRequestPartitionId,

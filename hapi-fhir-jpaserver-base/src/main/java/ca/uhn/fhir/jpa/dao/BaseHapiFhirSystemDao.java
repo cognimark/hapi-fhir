@@ -34,6 +34,7 @@ import ca.uhn.fhir.jpa.dao.data.IResourceTableDao;
 import ca.uhn.fhir.jpa.dao.expunge.ExpungeService;
 import ca.uhn.fhir.jpa.dao.tx.HapiTransactionService;
 import ca.uhn.fhir.jpa.dao.tx.IHapiTransactionService;
+import ca.uhn.fhir.jpa.model.config.PartitionSettings;
 import ca.uhn.fhir.jpa.model.dao.JpaPid;
 import ca.uhn.fhir.jpa.model.entity.BaseHasResource;
 import ca.uhn.fhir.jpa.model.entity.IdAndPartitionId;
@@ -43,6 +44,7 @@ import ca.uhn.fhir.jpa.model.entity.ResourceTable;
 import ca.uhn.fhir.jpa.partition.IRequestPartitionHelperSvc;
 import ca.uhn.fhir.jpa.search.PersistedJpaBundleProviderFactory;
 import ca.uhn.fhir.jpa.search.SearchConstants;
+import ca.uhn.fhir.jpa.searchparam.extractor.ReindexBatchPrefetch;
 import ca.uhn.fhir.jpa.util.QueryChunker;
 import ca.uhn.fhir.jpa.util.ResourceCountCache;
 import ca.uhn.fhir.rest.api.server.IBundleProvider;
@@ -77,7 +79,6 @@ import java.util.stream.Stream;
 public abstract class BaseHapiFhirSystemDao<T extends IBaseBundle, MT> extends BaseStorageDao
 		implements IFhirSystemDao<T, MT> {
 	private static final org.slf4j.Logger ourLog = org.slf4j.LoggerFactory.getLogger(BaseHapiFhirSystemDao.class);
-	static final String PREFETCHED_REFERENCE_IDS = BaseHapiFhirSystemDao.class.getName() + ".prefetchedReferenceIds";
 
 	public ResourceCountCache myResourceCountsCache;
 
@@ -98,6 +99,12 @@ public abstract class BaseHapiFhirSystemDao<T extends IBaseBundle, MT> extends B
 
 	@Autowired
 	private IIdHelperService<JpaPid> myIdHelperService;
+
+	@Autowired
+	private IJpaStorageResourceParser myJpaStorageResourceParser;
+
+	@Autowired
+	private PartitionSettings myReindexPartitionSettings;
 
 	@Autowired
 	private PersistedJpaBundleProviderFactory myPersistedJpaBundleProviderFactory;
@@ -306,6 +313,15 @@ public abstract class BaseHapiFhirSystemDao<T extends IBaseBundle, MT> extends B
 					if (myStorageSettings.getIndexMissingFields() == JpaStorageSettings.IndexEnabledEnum.ENABLED) {
 						prefetchByField("searchParamPresence", "mySearchParamPresents", r -> true, entityChunk);
 					}
+					if (theTransactionDetails != null) {
+						ReindexBatchPrefetch.prefetch(
+								theTransactionDetails,
+								entityChunk,
+								entity -> myJpaStorageResourceParser.toResource(entity, false),
+								myFhirContext,
+								myIdHelperService,
+								myReindexPartitionSettings.getDefaultRequestPartitionId());
+					}
 				}
 			}
 		});
@@ -314,7 +330,7 @@ public abstract class BaseHapiFhirSystemDao<T extends IBaseBundle, MT> extends B
 	/** Resolve existing link targets once, before per-resource updates can trigger repeated auto-flush checks. */
 	void prefetchExistingReferenceIds(List<ResourceTable> theEntities, TransactionDetails theTransactionDetails) {
 		Map<IdAndPartitionId, String> prefetched =
-				theTransactionDetails.getOrCreateUserData(PREFETCHED_REFERENCE_IDS, () -> {
+				theTransactionDetails.getOrCreateUserData(ReindexBatchPrefetch.EXISTING_REFERENCE_IDS, () -> {
 					Map<IdAndPartitionId, String> result = new HashMap<>();
 					theTransactionDetails.addRollbackUndoAction(result::clear);
 					return result;

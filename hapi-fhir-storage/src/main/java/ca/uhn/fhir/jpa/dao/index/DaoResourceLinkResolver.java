@@ -43,6 +43,7 @@ import ca.uhn.fhir.jpa.model.entity.StorageSettings;
 import ca.uhn.fhir.jpa.model.util.JpaConstants;
 import ca.uhn.fhir.jpa.searchparam.extractor.IResourceLinkResolver;
 import ca.uhn.fhir.jpa.searchparam.extractor.PathAndRef;
+import ca.uhn.fhir.jpa.searchparam.extractor.ReindexBatchPrefetch;
 import ca.uhn.fhir.rest.api.Constants;
 import ca.uhn.fhir.rest.api.QualifiedParamList;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
@@ -147,11 +148,15 @@ public class DaoResourceLinkResolver<T extends IResourcePersistentId<?>> impleme
 							+ " previously cached in transaction as not-found, specified in path: " + sourcePath);
 				}
 
-				resolvedResource = myIdHelperService.resolveResourceIdentity(
-						theRequestPartitionId,
-						resourceType,
-						idPart,
-						ResolveIdentityMode.excludeDeleted().noCacheUnlessDeletesDisabled());
+				resolvedResource =
+						ReindexBatchPrefetch.findTarget(theTransactionDetails, theRequestPartitionId, targetResourceId);
+				if (resolvedResource == null) {
+					resolvedResource = myIdHelperService.resolveResourceIdentity(
+							theRequestPartitionId,
+							resourceType,
+							idPart,
+							ResolveIdentityMode.excludeDeleted().noCacheUnlessDeletesDisabled());
+				}
 				ourLog.trace("Translated {}/{} to resource PID {}", type, idPart, resolvedResource);
 			} else {
 				resolvedResource = new ResourceLookupPersistentIdWrapper<>(persistentId);

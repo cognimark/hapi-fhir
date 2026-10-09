@@ -8,6 +8,7 @@ import ca.uhn.fhir.jpa.model.entity.IdAndPartitionId;
 import ca.uhn.fhir.jpa.model.entity.ResourceLink;
 import ca.uhn.fhir.jpa.model.entity.ResourceTable;
 import ca.uhn.fhir.jpa.searchparam.extractor.ResourceIndexedSearchParams;
+import ca.uhn.fhir.jpa.searchparam.extractor.ReindexBatchPrefetch;
 import ca.uhn.fhir.rest.api.server.storage.TransactionDetails;
 import org.hl7.fhir.r4.model.IdType;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +35,7 @@ import static org.mockito.Mockito.when;
 // Created by Codex
 class ReindexReferencePrefetchTest {
 
-	private static final String PREFETCH_KEY = BaseHapiFhirSystemDao.PREFETCHED_REFERENCE_IDS;
+	private static final String PREFETCH_KEY = ReindexBatchPrefetch.EXISTING_REFERENCE_IDS;
 	private final BaseHapiFhirDao<?> myDao = mock(BaseHapiFhirDao.class, CALLS_REAL_METHODS);
 	@SuppressWarnings("unchecked")
 	private final IIdHelperService<JpaPid> myIdHelper = mock(IIdHelperService.class);

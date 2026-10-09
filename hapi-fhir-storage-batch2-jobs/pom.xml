@@ -12,7 +12,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<name>HAPI-FHIR Storage Batch2 Jobs</name>
 	<artifactId>hapi-fhir-storage-batch2-jobs</artifactId>
-	<version>8.12.1-cognimark.5</version>
+	<version>8.12.1-cognimark.6</version>
 
 	<dependencies>
 		<dependency>
@@ -28,7 +28,7 @@
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-storage</artifactId>
-			<version>8.12.1-cognimark.5</version>
+			<version>8.12.1-cognimark.6</version>
 		</dependency>
 
 		<dependency>

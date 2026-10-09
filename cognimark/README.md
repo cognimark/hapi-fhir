@@ -1,9 +1,10 @@
 # Cognimark HAPI core fork
 
-Status, October 9, 2026: Core has deployed the source-built ARM64 `.4` runtime
+Status, October 9, 2026: Core has deployed the source-built ARM64 `.5` runtime
 with long-ID storage, JSON XHTML preservation, heartbeat lifecycle repair and
-single-owner native-work recovery. The `.5` reference-prefetch change is under
-runtime/performance qualification. Core owns deployment and ongoing full-rebuild
+single-owner native-work recovery and existing-reference prefetch. The `.6`
+incoming-reference prefetch change is under runtime/performance qualification.
+Core owns deployment and ongoing full-rebuild
 acceptance; a library version or unit-test pass is not a production-status claim.
 
 ## Baseline and ownership
@@ -63,14 +64,14 @@ The model artifact remains `8.12.1-cognimark.1`. The
 `hapi-fhir-base` artifact is `8.12.1-cognimark.2`. The scheduler (`hapi-fhir-jpa`)
 and Batch2 artifacts use `8.12.1-cognimark.3`. The in-development
 storage, search-parameter, Batch2-job and `hapi-fhir-jpaserver-base` artifacts
-use `8.12.1-cognimark.5`; other upstream
+use `8.12.1-cognimark.6`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 The starter must explicitly select each qualified custom artifact with dependency management.
 
 ## Transaction-local reference prefetch
 
-The `.5` candidate preloads existing reference target identities alongside the
+The deployed `.5` release preloads existing reference target identities alongside the
 bounded resource/index batch, before per-resource changes accumulate in Hibernate.
 This replaces repeated identity queries and automatic-flush scans with batched
 lookups using the same native ID helper. Reindex v2 and v3 pass their transaction
@@ -84,20 +85,31 @@ existing references. New or unresolved targets still use ordinary validation,
 resolution and placeholder creation. No shared cache, persistent schema, index
 definition, flush mode, optimistic-lock setting or job parameter changes.
 
-The same candidate fixes an off-by-one error in existing-link matching:
+The same release fixes an off-by-one error in existing-link matching:
 `Patient/abc` must compare `abc`, not `/abc`, to the reference's ID part. Type,
 path, case and version checks remain in place. Tests cover those mismatches,
 absolute references and IDs through 512 characters.
 
-Qualification before runtime deployment: 15 storage tests, 220 Batch2-job tests,
-252 search-parameter tests and 23 selected JPA/recovery tests pass. The standalone
-packaged suite passes 12 checks; the new prefetch tests first reproduced assertion
-failures against `.4`. HTTP/PostgreSQL, restart and performance qualification are
-owned by Core and must not be inferred from these unit results.
+The `.6` candidate extends the bounded reindex prefetch to incoming relative
+reference targets, using the native collection identity resolver and the exact
+source partition. Bodies are parsed once and consumed at their usual per-resource
+reindex boundary; parse failures are reported there rather than aborting healthy
+resources. A corrected version/history or a write invalidates the parsed body.
+Updates/deletes invalidate prefetched target identities, and rollback clears all
+new state. Positive lookups still pass ordinary link validation. Missing or
+deleted targets, conditional/remote references, cross-partition hooks and
+placeholder creation keep their native paths. No target is prematurely inserted
+into the native resolved-ID cache.
+
+Existing-link matching builds a lazy per-resource index once, reuses the batch's
+partition-aware identity map, and preserves path/type/ID/case/version matching.
+It is not a persistent or process-wide cache. Reindex concurrency and chunk
+parameters are unchanged. HTTP/PostgreSQL, restart and paired performance
+qualification are owned by Core and must not be inferred from unit results.
 
 ```sh
-mvn -B -ntp -f hapi-fhir-storage/pom.xml -Dtest=BaseStorageDaoResourceIdTest install
 mvn -B -ntp -f hapi-fhir-jpaserver-searchparam/pom.xml install
+mvn -B -ntp -f hapi-fhir-storage/pom.xml -Dtest=BaseStorageDaoResourceIdTest,DaoResourceLinkResolverTest install
 mvn -B -ntp -f hapi-fhir-storage-batch2-jobs/pom.xml install
 mvn -B -ntp -f hapi-fhir-jpaserver-base/pom.xml \
   -Dtest=LocalBatch2WorkRecoveryTest,ReindexPartitionContextTest,JpaJobPersistenceImplTest,ReindexReferencePrefetchTest install

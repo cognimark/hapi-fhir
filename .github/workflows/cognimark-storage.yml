@@ -27,10 +27,17 @@ jobs:
         run: |
           mvn -B -ntp -f hapi-fhir-base/pom.xml install
           mvn -B -ntp -f cognimark/narrative-tests/pom.xml test
-      - name: Build the versioned storage libraries and exercise the contract
+      - name: Build the versioned storage, reindex and recovery libraries
         env:
-          MAVEN_OPTS: -Xmx2g
-        run: >-
-          mvn -B -ntp -pl hapi-fhir-jpaserver-model,hapi-fhir-storage
-          -Dtest=ResourceTableTest,BaseStorageDaoResourceIdTest
-          -Dsurefire.failIfNoSpecifiedTests=false install
+          MAVEN_OPTS: -Xmx2g -XX:ActiveProcessorCount=2
+        run: |
+          mvn -B -ntp -f hapi-fhir-jpaserver-model/pom.xml -Dtest=ResourceTableTest install
+          mvn -B -ntp -f hapi-fhir-jpaserver-searchparam/pom.xml install
+          mvn -B -ntp -f hapi-fhir-storage/pom.xml -Dtest=BaseStorageDaoResourceIdTest,DaoResourceLinkResolverTest install
+          mvn -B -ntp -f hapi-fhir-jpa/pom.xml install
+          mvn -B -ntp -f hapi-fhir-storage-batch2/pom.xml install
+          mvn -B -ntp -f cognimark/batch2-tests/pom.xml test
+          mvn -B -ntp -f hapi-fhir-storage-batch2-jobs/pom.xml install
+          mvn -B -ntp -f hapi-fhir-jpaserver-base/pom.xml \
+            -Dtest=LocalBatch2WorkRecoveryTest,ReindexPartitionContextTest,JpaJobPersistenceImplTest,ReindexReferencePrefetchTest install
+          mvn -B -ntp -f cognimark/reindex-tests/pom.xml test

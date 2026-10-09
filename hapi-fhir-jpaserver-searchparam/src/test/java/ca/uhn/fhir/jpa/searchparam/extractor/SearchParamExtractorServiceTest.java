@@ -9,6 +9,8 @@ import ca.uhn.fhir.jpa.api.svc.IIdHelperService;
 import ca.uhn.fhir.jpa.model.dao.JpaPid;
 import ca.uhn.fhir.jpa.model.entity.ResourceLink;
 import ca.uhn.fhir.jpa.model.entity.ResourceTable;
+import ca.uhn.fhir.jpa.model.entity.IdAndPartitionId;
+import ca.uhn.fhir.rest.api.server.storage.TransactionDetails;
 import ca.uhn.fhir.rest.server.servlet.ServletRequestDetails;
 import ca.uhn.fhir.test.utilities.MockInvoker;
 import org.hl7.fhir.r4.model.Group;
@@ -21,12 +23,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
-import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -41,6 +40,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -113,24 +114,33 @@ public class SearchParamExtractorServiceTest {
 		JpaPid differentPid = JpaPid.fromId(888L);
 		idMap.put(differentPid, Optional.of("Patient/888"));
 
-		// Use reflection to call the private method
-		Method method = SearchParamExtractorService.class.getDeclaredMethod(
-			"findMatchingResourceLink",
-			PathAndRef.class,
-			Collection.class
-		);
-		method.setAccessible(true);
-
-		// Execute - should not throw NullPointerException
-		Optional<ResourceLink> result = unsafeCast(method.invoke(svc, pathAndRef, existingResourceLinks));
+		Optional<ResourceLink> result = svc.new ExistingResourceLinkMatcher(existingResourceLinks, new TransactionDetails()).find(pathAndRef);
 
 		// Verify - should return empty Optional since no match was found
 		assertThat(result).isEmpty();
 	}
 
-	@SuppressWarnings("unchecked")
-	private static <T> T unsafeCast(Object theObject) {
-		return (T) theObject;
+	@Test
+	void repeatedLinkMatchingWithinOneResourceTranslatesTargetsOnlyOnce() {
+		mySvc.setContextForUnitTest(FhirContext.forR4Cached());
+		mySvc.setIdHelperServiceForUnitTest(myIdHelperService);
+		JpaPid pid = new JpaPid(1001, 123L);
+		ResourceLink link = mock(ResourceLink.class);
+		when(link.getTargetResourcePk()).thenReturn(pid);
+		when(link.getSourcePath()).thenReturn("MedicationRequest.subject");
+		when(link.getTargetResourceType()).thenReturn("Patient");
+		when(myIdHelperService.translatePidsToForcedIds(Set.of(pid)))
+				.thenReturn(new PersistentIdToForcedIdMap<>(Map.of(pid, Optional.of("Patient/synthetic"))));
+		PathAndRef reference = new PathAndRef("subject", "MedicationRequest.subject", new Reference("Patient/synthetic"), false);
+		List<ResourceLink> links = List.of(link);
+
+		var matcher = mySvc.new ExistingResourceLinkMatcher(links, new TransactionDetails());
+		Optional<ResourceLink> first = matcher.find(reference);
+		Optional<ResourceLink> second = matcher.find(reference);
+
+		assertThat(first).containsSame(link);
+		assertThat(second).containsSame(link);
+		verify(myIdHelperService).translatePidsToForcedIds(Set.of(pid));
 	}
 
 	@Test
@@ -146,8 +156,7 @@ public class SearchParamExtractorServiceTest {
 				.thenReturn(new PersistentIdToForcedIdMap<>(Map.of(pid, Optional.of("Patient/synthetic"))));
 		PathAndRef reference = new PathAndRef("subject", "MedicationRequest.subject", new Reference("Patient/synthetic"), false);
 
-		Optional<ResourceLink> matched = ReflectionTestUtils.invokeMethod(
-				mySvc, "findMatchingResourceLink", reference, List.of(link));
+		Optional<ResourceLink> matched = mySvc.new ExistingResourceLinkMatcher(List.of(link), new TransactionDetails()).find(reference);
 
 		assertThat(matched).containsSame(link);
 	}
@@ -173,13 +182,12 @@ public class SearchParamExtractorServiceTest {
 		when(link.getTargetResourcePk()).thenReturn(pid);
 		when(link.getSourcePath()).thenReturn(thePath);
 		when(link.getTargetResourceType()).thenReturn(theType);
-		when(link.getTargetResourceVersion()).thenReturn(theVersion);
+		lenient().when(link.getTargetResourceVersion()).thenReturn(theVersion);
 		when(myIdHelperService.translatePidsToForcedIds(Set.of(pid)))
 				.thenReturn(new PersistentIdToForcedIdMap<>(Map.of(pid, Optional.of(theType + "/" + theId))));
 		PathAndRef reference = new PathAndRef("subject", "MedicationRequest.subject", new Reference(theReference), false);
 
-		Optional<ResourceLink> matched = ReflectionTestUtils.invokeMethod(
-				mySvc, "findMatchingResourceLink", reference, List.of(link));
+		Optional<ResourceLink> matched = mySvc.new ExistingResourceLinkMatcher(List.of(link), new TransactionDetails()).find(reference);
 
 		assertThat(matched.isPresent()).isEqualTo(theMatches);
 	}
@@ -199,9 +207,27 @@ public class SearchParamExtractorServiceTest {
 				.thenReturn(new PersistentIdToForcedIdMap<>(Map.of(pid, Optional.of("Patient/" + id))));
 		PathAndRef reference = new PathAndRef("subject", "MedicationRequest.subject", new Reference("Patient/" + id), false);
 
-		Optional<ResourceLink> matched = ReflectionTestUtils.invokeMethod(
-				mySvc, "findMatchingResourceLink", reference, List.of(link));
+		Optional<ResourceLink> matched = mySvc.new ExistingResourceLinkMatcher(List.of(link), new TransactionDetails()).find(reference);
 
 		assertThat(matched).containsSame(link);
+	}
+
+	@Test
+	void matchingUsesBatchIdentitiesWithoutQueryingAndDoesNotLeakBetweenResources() {
+		mySvc.setContextForUnitTest(FhirContext.forR4Cached());
+		mySvc.setIdHelperServiceForUnitTest(myIdHelperService);
+		JpaPid pid = new JpaPid(1001, 123L);
+		ResourceLink link = mock(ResourceLink.class);
+		when(link.getTargetResourcePk()).thenReturn(pid);
+		when(link.getSourcePath()).thenReturn("MedicationRequest.subject");
+		when(link.getTargetResourceType()).thenReturn("Patient");
+		TransactionDetails transaction = new TransactionDetails();
+		transaction.putUserData(ReindexBatchPrefetch.EXISTING_REFERENCE_IDS,
+				Map.of(new IdAndPartitionId(123L, 1001), "Patient/synthetic"));
+		PathAndRef reference = new PathAndRef("subject", "MedicationRequest.subject", new Reference("Patient/synthetic"), false);
+
+		assertThat(mySvc.new ExistingResourceLinkMatcher(List.of(link), transaction).find(reference)).containsSame(link);
+		assertThat(mySvc.new ExistingResourceLinkMatcher(List.of(), transaction).find(reference)).isEmpty();
+		verifyNoInteractions(myIdHelperService);
 	}
 }

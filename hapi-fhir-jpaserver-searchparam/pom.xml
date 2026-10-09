@@ -11,7 +11,7 @@
 	</parent>
 
 	<artifactId>hapi-fhir-jpaserver-searchparam</artifactId>
-	<version>8.12.1-cognimark.5</version>
+	<version>8.12.1-cognimark.6</version>
 	<packaging>jar</packaging>
 
 	<name>HAPI FHIR JPA - Search Parameters</name>

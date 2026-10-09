@@ -72,6 +72,7 @@ import ca.uhn.fhir.jpa.model.search.StorageProcessingMessage;
 import ca.uhn.fhir.jpa.model.util.JpaConstants;
 import ca.uhn.fhir.jpa.partition.IPartitionLookupSvc;
 import ca.uhn.fhir.jpa.searchparam.extractor.LogicalReferenceHelper;
+import ca.uhn.fhir.jpa.searchparam.extractor.ReindexBatchPrefetch;
 import ca.uhn.fhir.jpa.searchparam.extractor.ResourceIndexedSearchParams;
 import ca.uhn.fhir.jpa.searchparam.fulltext.FullTextExtractionRequest;
 import ca.uhn.fhir.jpa.searchparam.fulltext.FullTextExtractionResponse;
@@ -956,6 +957,8 @@ public abstract class BaseHapiFhirDao<T extends IBaseResource> extends BaseStora
 			}
 		}
 
+		ReindexBatchPrefetch.invalidate(theTransactionDetails, entity);
+
 		if (entity.getPublished() == null) {
 			ourLog.debug("Entity has published time: {}", theTransactionDetails.getTransactionDate());
 			entity.setPublished(theTransactionDetails.getTransactionDate());
@@ -1208,7 +1211,7 @@ public abstract class BaseHapiFhirDao<T extends IBaseResource> extends BaseStora
 				.collect(Collectors.toSet());
 		Map<JpaPid, Optional<String>> existingLinkTargetMap = new HashMap<>();
 		Map<IdAndPartitionId, String> prefetched =
-				theTransactionDetails.getUserData(BaseHapiFhirSystemDao.PREFETCHED_REFERENCE_IDS);
+				theTransactionDetails.getUserData(ReindexBatchPrefetch.EXISTING_REFERENCE_IDS);
 		if (prefetched != null) {
 			existingLinkTargetPids.removeIf(pid -> {
 				String id = prefetched.get(new IdAndPartitionId(pid.getId(), pid.getPartitionId()));
