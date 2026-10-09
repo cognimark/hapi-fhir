@@ -1,11 +1,10 @@
 # Cognimark HAPI core fork
 
-Status, September 24, 2026: Core has deployed the source-built ARM64 runtime
-with original long-ID storage and JSON XHTML preservation on the existing
-shared HAPI host. The parser fix passes native runtime acceptance and an
-evidence-preserving correction of one previously rewritten narrative. The old
-historical version and immutable input/commit evidence remain unchanged.
-Product refresh activation remains a separate coordinated Core/Agent/KG gate.
+Status, October 9, 2026: Core has deployed the source-built ARM64 `.4` runtime
+with long-ID storage, JSON XHTML preservation, heartbeat lifecycle repair and
+single-owner native-work recovery. The `.5` reference-prefetch change is under
+runtime/performance qualification. Core owns deployment and ongoing full-rebuild
+acceptance; a library version or unit-test pass is not a production-status claim.
 
 ## Baseline and ownership
 
@@ -60,13 +59,50 @@ setup and its documentation were prepared with Codex assistance.
 
 ## Build and focused verification
 
-The model and storage artifacts remain `8.12.1-cognimark.1`. The
+The model artifact remains `8.12.1-cognimark.1`. The
 `hapi-fhir-base` artifact is `8.12.1-cognimark.2`. The scheduler (`hapi-fhir-jpa`)
 and Batch2 artifacts use `8.12.1-cognimark.3`. The in-development
-`hapi-fhir-jpaserver-base` artifact uses `8.12.1-cognimark.4`; other upstream
+storage, search-parameter, Batch2-job and `hapi-fhir-jpaserver-base` artifacts
+use `8.12.1-cognimark.5`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 The starter must explicitly select each qualified custom artifact with dependency management.
+
+## Transaction-local reference prefetch
+
+The `.5` candidate preloads existing reference target identities alongside the
+bounded resource/index batch, before per-resource changes accumulate in Hibernate.
+This replaces repeated identity queries and automatic-flush scans with batched
+lookups using the same native ID helper. Reindex v2 and v3 pass their transaction
+details explicitly. The existing two-argument storage API remains available for
+upstream callers that do not participate in transaction-local reference prefetch.
+
+The cache uses persistent ID **and partition**, contains positive results only,
+is cleared on rollback, and dies with the transaction. It does not populate all
+resolved-reference entries in advance: each resource activates only its own
+existing references. New or unresolved targets still use ordinary validation,
+resolution and placeholder creation. No shared cache, persistent schema, index
+definition, flush mode, optimistic-lock setting or job parameter changes.
+
+The same candidate fixes an off-by-one error in existing-link matching:
+`Patient/abc` must compare `abc`, not `/abc`, to the reference's ID part. Type,
+path, case and version checks remain in place. Tests cover those mismatches,
+absolute references and IDs through 512 characters.
+
+Qualification before runtime deployment: 15 storage tests, 220 Batch2-job tests,
+252 search-parameter tests and 23 selected JPA/recovery tests pass. The standalone
+packaged suite passes 12 checks; the new prefetch tests first reproduced assertion
+failures against `.4`. HTTP/PostgreSQL, restart and performance qualification are
+owned by Core and must not be inferred from these unit results.
+
+```sh
+mvn -B -ntp -f hapi-fhir-storage/pom.xml -Dtest=BaseStorageDaoResourceIdTest install
+mvn -B -ntp -f hapi-fhir-jpaserver-searchparam/pom.xml install
+mvn -B -ntp -f hapi-fhir-storage-batch2-jobs/pom.xml install
+mvn -B -ntp -f hapi-fhir-jpaserver-base/pom.xml \
+  -Dtest=LocalBatch2WorkRecoveryTest,ReindexPartitionContextTest,JpaJobPersistenceImplTest,ReindexReferencePrefetchTest install
+mvn -B -ntp -f cognimark/reindex-tests/pom.xml test
+```
 
 ## Batch2 heartbeat lifecycle
 
@@ -136,10 +172,10 @@ tests. Core's `docs/hapi-reindex.md` owns the deployment and measurement receipt
 mvn -B -ntp -f hapi-fhir-jpaserver-base/pom.xml \
   -Dtest=LocalBatch2WorkRecoveryTest,ReindexPartitionContextTest,JpaJobPersistenceImplTest install
 mvn -B -ntp -f cognimark/reindex-tests/pom.xml test
-# Baseline: expected assertion failures, not dependency or compilation errors.
-mvn -B -ntp -f cognimark/reindex-tests/pom.xml \
-  -Dcognimark.hapi.persistence.version=8.12.1 test
 ```
+
+The original four partition-context tests were also run against official
+8.12.1 before extending the suite with the `.5` storage API contract.
 
 From a clean checkout, using Java 17 and Maven:
 

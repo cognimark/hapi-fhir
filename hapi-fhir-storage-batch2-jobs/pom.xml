@@ -12,17 +12,23 @@
 	<modelVersion>4.0.0</modelVersion>
 	<name>HAPI-FHIR Storage Batch2 Jobs</name>
 	<artifactId>hapi-fhir-storage-batch2-jobs</artifactId>
+	<version>8.12.1-cognimark.5</version>
 
 	<dependencies>
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-base</artifactId>
-			<version>${project.version}</version>
+			<version>8.12.1-cognimark.2</version>
 		</dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-storage-batch2</artifactId>
-			<version>${project.version}</version>
+			<version>8.12.1-cognimark.3</version>
+		</dependency>
+		<dependency>
+			<groupId>ca.uhn.hapi.fhir</groupId>
+			<artifactId>hapi-fhir-storage</artifactId>
+			<version>8.12.1-cognimark.5</version>
 		</dependency>
 
 		<dependency>
@@ -35,19 +41,19 @@
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-test-utilities</artifactId>
-			<version>${project.version}</version>
+			<version>${project.parent.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-validation</artifactId>
-			<version>${project.version}</version>
+			<version>${project.parent.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-caching-caffeine</artifactId>
-			<version>${project.version}</version>
+			<version>${project.parent.version}</version>
 			<scope>test</scope>
 		</dependency>
 

@@ -16,8 +16,12 @@ import org.hl7.fhir.r4.model.Reference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.lang.reflect.Method;
 import java.time.Instant;
@@ -28,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -36,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -125,5 +131,77 @@ public class SearchParamExtractorServiceTest {
 	@SuppressWarnings("unchecked")
 	private static <T> T unsafeCast(Object theObject) {
 		return (T) theObject;
+	}
+
+	@Test
+	void existingReferenceMatchesTheIdPartWithoutItsTypeSeparator() {
+		mySvc.setContextForUnitTest(FhirContext.forR4Cached());
+		mySvc.setIdHelperServiceForUnitTest(myIdHelperService);
+		JpaPid pid = new JpaPid(1001, 123L);
+		ResourceLink link = mock(ResourceLink.class);
+		when(link.getTargetResourcePk()).thenReturn(pid);
+		when(link.getSourcePath()).thenReturn("MedicationRequest.subject");
+		when(link.getTargetResourceType()).thenReturn("Patient");
+		when(myIdHelperService.translatePidsToForcedIds(Set.of(pid)))
+				.thenReturn(new PersistentIdToForcedIdMap<>(Map.of(pid, Optional.of("Patient/synthetic"))));
+		PathAndRef reference = new PathAndRef("subject", "MedicationRequest.subject", new Reference("Patient/synthetic"), false);
+
+		Optional<ResourceLink> matched = ReflectionTestUtils.invokeMethod(
+				mySvc, "findMatchingResourceLink", reference, List.of(link));
+
+		assertThat(matched).containsSame(link);
+	}
+
+	@ParameterizedTest
+	@CsvSource({
+			"MedicationRequest.subject,Patient,synthetic,3,Patient/synthetic/_history/3,true",
+			"MedicationRequest.encounter,Patient,synthetic,3,Patient/synthetic/_history/3,false",
+			"MedicationRequest.subject,Practitioner,synthetic,3,Patient/synthetic/_history/3,false",
+			"MedicationRequest.subject,Patient,different,3,Patient/synthetic/_history/3,false",
+			"MedicationRequest.subject,Patient,synthetic,2,Patient/synthetic/_history/3,false",
+			"MedicationRequest.subject,Patient,Synthetic,3,Patient/synthetic/_history/3,false",
+			"MedicationRequest.subject,Patient,synthetic,3,https://example.org/fhir/Patient/synthetic/_history/3,true"
+	})
+	void matchingStillRequiresTheSamePathTypeIdAndVersion(
+			String thePath, String theType, String theId, long theVersion, String theReference, boolean theMatches) {
+		FhirContext context = FhirContext.forR4();
+		context.getParserOptions().setStripVersionsFromReferences(false);
+		mySvc.setContextForUnitTest(context);
+		mySvc.setIdHelperServiceForUnitTest(myIdHelperService);
+		JpaPid pid = new JpaPid(1001, 123L);
+		ResourceLink link = mock(ResourceLink.class);
+		when(link.getTargetResourcePk()).thenReturn(pid);
+		when(link.getSourcePath()).thenReturn(thePath);
+		when(link.getTargetResourceType()).thenReturn(theType);
+		when(link.getTargetResourceVersion()).thenReturn(theVersion);
+		when(myIdHelperService.translatePidsToForcedIds(Set.of(pid)))
+				.thenReturn(new PersistentIdToForcedIdMap<>(Map.of(pid, Optional.of(theType + "/" + theId))));
+		PathAndRef reference = new PathAndRef("subject", "MedicationRequest.subject", new Reference(theReference), false);
+
+		Optional<ResourceLink> matched = ReflectionTestUtils.invokeMethod(
+				mySvc, "findMatchingResourceLink", reference, List.of(link));
+
+		assertThat(matched.isPresent()).isEqualTo(theMatches);
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = {64, 88, 256, 512})
+	void matchingPreservesLongResourceIdentities(int theLength) {
+		mySvc.setContextForUnitTest(FhirContext.forR4Cached());
+		mySvc.setIdHelperServiceForUnitTest(myIdHelperService);
+		String id = "s".repeat(theLength);
+		JpaPid pid = new JpaPid(1001, 123L);
+		ResourceLink link = mock(ResourceLink.class);
+		when(link.getTargetResourcePk()).thenReturn(pid);
+		when(link.getSourcePath()).thenReturn("MedicationRequest.subject");
+		when(link.getTargetResourceType()).thenReturn("Patient");
+		when(myIdHelperService.translatePidsToForcedIds(Set.of(pid)))
+				.thenReturn(new PersistentIdToForcedIdMap<>(Map.of(pid, Optional.of("Patient/" + id))));
+		PathAndRef reference = new PathAndRef("subject", "MedicationRequest.subject", new Reference("Patient/" + id), false);
+
+		Optional<ResourceLink> matched = ReflectionTestUtils.invokeMethod(
+				mySvc, "findMatchingResourceLink", reference, List.of(link));
+
+		assertThat(matched).containsSame(link);
 	}
 }

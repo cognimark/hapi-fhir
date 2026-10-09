@@ -29,13 +29,16 @@ import ca.uhn.fhir.jpa.api.dao.DaoRegistry;
 import ca.uhn.fhir.jpa.api.dao.IFhirSystemDao;
 import ca.uhn.fhir.jpa.api.model.ExpungeOptions;
 import ca.uhn.fhir.jpa.api.model.ExpungeOutcome;
+import ca.uhn.fhir.jpa.api.svc.IIdHelperService;
 import ca.uhn.fhir.jpa.dao.data.IResourceTableDao;
 import ca.uhn.fhir.jpa.dao.expunge.ExpungeService;
 import ca.uhn.fhir.jpa.dao.tx.HapiTransactionService;
 import ca.uhn.fhir.jpa.dao.tx.IHapiTransactionService;
 import ca.uhn.fhir.jpa.model.dao.JpaPid;
 import ca.uhn.fhir.jpa.model.entity.BaseHasResource;
+import ca.uhn.fhir.jpa.model.entity.IdAndPartitionId;
 import ca.uhn.fhir.jpa.model.entity.ResourceHistoryTable;
+import ca.uhn.fhir.jpa.model.entity.ResourceLink;
 import ca.uhn.fhir.jpa.model.entity.ResourceTable;
 import ca.uhn.fhir.jpa.partition.IRequestPartitionHelperSvc;
 import ca.uhn.fhir.jpa.search.PersistedJpaBundleProviderFactory;
@@ -45,6 +48,7 @@ import ca.uhn.fhir.jpa.util.ResourceCountCache;
 import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.api.server.storage.IResourcePersistentId;
+import ca.uhn.fhir.rest.api.server.storage.TransactionDetails;
 import ca.uhn.fhir.rest.server.exceptions.MethodNotAllowedException;
 import ca.uhn.fhir.util.StopWatch;
 import com.google.common.annotations.VisibleForTesting;
@@ -64,6 +68,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -71,6 +77,7 @@ import java.util.stream.Stream;
 public abstract class BaseHapiFhirSystemDao<T extends IBaseBundle, MT> extends BaseStorageDao
 		implements IFhirSystemDao<T, MT> {
 	private static final org.slf4j.Logger ourLog = org.slf4j.LoggerFactory.getLogger(BaseHapiFhirSystemDao.class);
+	static final String PREFETCHED_REFERENCE_IDS = BaseHapiFhirSystemDao.class.getName() + ".prefetchedReferenceIds";
 
 	public ResourceCountCache myResourceCountsCache;
 
@@ -88,6 +95,9 @@ public abstract class BaseHapiFhirSystemDao<T extends IBaseBundle, MT> extends B
 
 	@Autowired
 	private IResourceTableDao myResourceTableDao;
+
+	@Autowired
+	private IIdHelperService<JpaPid> myIdHelperService;
 
 	@Autowired
 	private PersistedJpaBundleProviderFactory myPersistedJpaBundleProviderFactory;
@@ -202,6 +212,13 @@ public abstract class BaseHapiFhirSystemDao<T extends IBaseBundle, MT> extends B
 	@Override
 	public <P extends IResourcePersistentId> void preFetchResources(
 			List<P> theResolvedIds, boolean thePreFetchIndexes) {
+		preFetchResources(theResolvedIds, thePreFetchIndexes, null);
+	}
+
+	@Override
+	@SuppressWarnings("rawtypes")
+	public <P extends IResourcePersistentId> void preFetchResources(
+			List<P> theResolvedIds, boolean thePreFetchIndexes, TransactionDetails theTransactionDetails) {
 		HapiTransactionService.requireTransaction();
 		List<JpaPid> pids = theResolvedIds.stream().map(t -> ((JpaPid) t)).collect(Collectors.toList());
 
@@ -264,6 +281,9 @@ public abstract class BaseHapiFhirSystemDao<T extends IBaseBundle, MT> extends B
 							"LEFT JOIN FETCH r.myResourceLinks l",
 							ResourceTable::isHasLinks,
 							entityChunk);
+					if (theTransactionDetails != null) {
+						prefetchExistingReferenceIds(entityChunk, theTransactionDetails);
+					}
 
 					prefetchByJoinClause(
 							"tags",
@@ -289,6 +309,30 @@ public abstract class BaseHapiFhirSystemDao<T extends IBaseBundle, MT> extends B
 				}
 			}
 		});
+	}
+
+	/** Resolve existing link targets once, before per-resource updates can trigger repeated auto-flush checks. */
+	void prefetchExistingReferenceIds(List<ResourceTable> theEntities, TransactionDetails theTransactionDetails) {
+		Map<IdAndPartitionId, String> prefetched =
+				theTransactionDetails.getOrCreateUserData(PREFETCHED_REFERENCE_IDS, () -> {
+					Map<IdAndPartitionId, String> result = new HashMap<>();
+					theTransactionDetails.addRollbackUndoAction(result::clear);
+					return result;
+				});
+		Set<JpaPid> targets = theEntities.stream()
+				.filter(ResourceTable::isHasLinks)
+				.flatMap(entity -> entity.getResourceLinks().stream())
+				.map(ResourceLink::getTargetResourcePk)
+				.filter(Objects::nonNull)
+				.filter(pid -> !prefetched.containsKey(new IdAndPartitionId(pid.getId(), pid.getPartitionId())))
+				.collect(Collectors.toSet());
+		if (!targets.isEmpty()) {
+			myIdHelperService
+					.translatePidsToForcedIds(targets)
+					.getResourcePersistentIdOptionalMap()
+					.forEach((pid, id) -> id.ifPresent(
+							value -> prefetched.put(new IdAndPartitionId(pid.getId(), pid.getPartitionId()), value)));
+		}
 	}
 
 	@Nonnull

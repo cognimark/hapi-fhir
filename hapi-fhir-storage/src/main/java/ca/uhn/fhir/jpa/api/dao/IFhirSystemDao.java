@@ -25,6 +25,7 @@ import ca.uhn.fhir.jpa.api.model.ExpungeOutcome;
 import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.api.server.storage.IResourcePersistentId;
+import ca.uhn.fhir.rest.api.server.storage.TransactionDetails;
 import jakarta.annotation.Nullable;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,5 +94,19 @@ public interface IFhirSystemDao<T, MT> extends IDao {
 	default <P extends IResourcePersistentId> void preFetchResources(
 			List<P> theResolvedIds, boolean thePreFetchIndexes) {
 		// nothing by default
+	}
+
+	/**
+	 * Preload resources and existing reference identities for a bounded batch before
+	 * modifying its indexes. Prefetched identities belong only to this transaction;
+	 * they must not suppress validation of new or unresolved references.
+	 *
+	 * @param theResolvedIds persistent resource identities to preload
+	 * @param thePreFetchIndexes whether resource indexes should be loaded
+	 * @param theTransactionDetails transaction receiving prefetched reference identities
+	 */
+	default <P extends IResourcePersistentId> void preFetchResources(
+			List<P> theResolvedIds, boolean thePreFetchIndexes, TransactionDetails theTransactionDetails) {
+		preFetchResources(theResolvedIds, thePreFetchIndexes);
 	}
 }

@@ -11,7 +11,7 @@
 	</parent>
 
 	<artifactId>hapi-fhir-storage</artifactId>
-	<version>8.12.1-cognimark.1</version>
+	<version>8.12.1-cognimark.5</version>
 	<packaging>jar</packaging>
 
 	<name>HAPI FHIR Storage api</name>
@@ -80,7 +80,7 @@
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-jpaserver-model</artifactId>
-			<version>${project.version}</version>
+			<version>8.12.1-cognimark.1</version>
 		</dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>

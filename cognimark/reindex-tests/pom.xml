@@ -7,7 +7,7 @@
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <cognimark.hapi.persistence.version>8.12.1-cognimark.4</cognimark.hapi.persistence.version>
+        <cognimark.hapi.persistence.version>8.12.1-cognimark.5</cognimark.hapi.persistence.version>
     </properties>
     <dependencies>
         <dependency>
@@ -56,6 +56,7 @@
                 <configuration>
                     <testIncludes>
                         <testInclude>**/ReindexPartitionContextTest.java</testInclude>
+                        <testInclude>**/ReindexReferencePrefetchTest.java</testInclude>
                     </testIncludes>
                 </configuration>
             </plugin>

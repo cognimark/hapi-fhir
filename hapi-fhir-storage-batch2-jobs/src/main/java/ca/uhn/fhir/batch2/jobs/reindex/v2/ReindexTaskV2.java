@@ -158,7 +158,7 @@ public class ReindexTaskV2 implements TransactionCallback<ReindexResults> {
 		// Prefetch Resources from DB
 		boolean reindexSearchParameters =
 				myJobParameters.getReindexSearchParameters() != ReindexParameters.ReindexSearchParametersEnum.NONE;
-		myDaoRegistry.getSystemDao().preFetchResources(persistentIds, reindexSearchParameters);
+		myDaoRegistry.getSystemDao().preFetchResources(persistentIds, reindexSearchParameters, myTransactionDetails);
 		ourLog.info(
 				"Prefetched {} resources in {} - Instance[{}] Chunk[{}]",
 				persistentIds.size(),

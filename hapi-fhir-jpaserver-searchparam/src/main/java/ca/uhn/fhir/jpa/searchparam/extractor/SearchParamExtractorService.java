@@ -864,7 +864,7 @@ public class SearchParamExtractorService implements ISearchParamExtractorSvc {
 
 			if (idPartOpt.isPresent()) {
 				String idPart = idPartOpt.get();
-				idPart = idPart.substring(idPart.indexOf('/'));
+				idPart = idPart.substring(idPart.indexOf('/') + 1);
 				hasMatchingResourceId = Strings.CS.equals(idPart, referenceElement.getIdPart());
 			}
 

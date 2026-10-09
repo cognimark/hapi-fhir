@@ -36,7 +36,6 @@ import ca.uhn.fhir.jpa.api.config.JpaStorageSettings;
 import ca.uhn.fhir.jpa.api.dao.IDao;
 import ca.uhn.fhir.jpa.api.dao.IJpaDao;
 import ca.uhn.fhir.jpa.api.model.DaoMethodOutcome;
-import ca.uhn.fhir.jpa.api.model.PersistentIdToForcedIdMap;
 import ca.uhn.fhir.jpa.api.svc.IIdHelperService;
 import ca.uhn.fhir.jpa.api.svc.ISearchCoordinatorSvc;
 import ca.uhn.fhir.jpa.cache.IResourceTypeCacheSvc;
@@ -60,6 +59,7 @@ import ca.uhn.fhir.jpa.model.dao.JpaPid;
 import ca.uhn.fhir.jpa.model.entity.BaseHasResource;
 import ca.uhn.fhir.jpa.model.entity.BaseTag;
 import ca.uhn.fhir.jpa.model.entity.EntityIndexStatusEnum;
+import ca.uhn.fhir.jpa.model.entity.IdAndPartitionId;
 import ca.uhn.fhir.jpa.model.entity.ResourceEncodingEnum;
 import ca.uhn.fhir.jpa.model.entity.ResourceHistoryTable;
 import ca.uhn.fhir.jpa.model.entity.ResourceLink;
@@ -141,6 +141,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -1205,10 +1206,25 @@ public abstract class BaseHapiFhirDao<T extends IBaseResource> extends BaseStora
 				.filter(Objects::nonNull)
 				.filter(pid -> !theTransactionDetails.hasReverseResolvedId(pid))
 				.collect(Collectors.toSet());
-		PersistentIdToForcedIdMap<JpaPid> existingLinkTargetMap =
-				myIdHelperService.translatePidsToForcedIds(existingLinkTargetPids);
-		for (Map.Entry<JpaPid, Optional<String>> existingTarget :
-				existingLinkTargetMap.getResourcePersistentIdOptionalMap().entrySet()) {
+		Map<JpaPid, Optional<String>> existingLinkTargetMap = new HashMap<>();
+		Map<IdAndPartitionId, String> prefetched =
+				theTransactionDetails.getUserData(BaseHapiFhirSystemDao.PREFETCHED_REFERENCE_IDS);
+		if (prefetched != null) {
+			existingLinkTargetPids.removeIf(pid -> {
+				String id = prefetched.get(new IdAndPartitionId(pid.getId(), pid.getPartitionId()));
+				if (id == null) {
+					return false;
+				}
+				existingLinkTargetMap.put(pid, Optional.of(id));
+				return true;
+			});
+		}
+		if (!existingLinkTargetPids.isEmpty()) {
+			existingLinkTargetMap.putAll(myIdHelperService
+					.translatePidsToForcedIds(existingLinkTargetPids)
+					.getResourcePersistentIdOptionalMap());
+		}
+		for (Map.Entry<JpaPid, Optional<String>> existingTarget : existingLinkTargetMap.entrySet()) {
 			if (existingTarget.getValue().isPresent()) {
 				JpaPid pid = existingTarget.getKey();
 				IIdType id = myContext
