@@ -94,7 +94,7 @@ The same release fixes an off-by-one error in existing-link matching:
 path, case and version checks remain in place. Tests cover those mismatches,
 absolute references and IDs through 512 characters.
 
-The `.6` candidate extends the bounded reindex prefetch to incoming relative
+The `.6` release extends the bounded reindex prefetch to incoming relative
 reference targets, using the native collection identity resolver and the exact
 source partition. Bodies are parsed once and consumed at their usual per-resource
 reindex boundary; parse failures are reported there rather than aborting healthy
@@ -110,6 +110,12 @@ partition-aware identity map, and preserves path/type/ID/case/version matching.
 It is not a persistent or process-wide cache. Reindex concurrency and chunk
 parameters are unchanged. HTTP/PostgreSQL, restart and paired performance
 qualification are owned by Core and must not be inferred from unit results.
+
+Core accepted `.6` as production `core-hapi:8` on October 9 at 15:48 UTC, after
+source-pinned AMD64 and ARM64 TLS/PostgreSQL/recovery qualification. Original
+native jobs continued and authorized FHIR/KG reads matched. Core's
+`docs/hapi-reindex.md` records paired synthetic results and live acceptance;
+runtime deployment does not imply completion of the ongoing full BSC rebuild.
 
 ```sh
 mvn -B -ntp -f hapi-fhir-jpaserver-searchparam/pom.xml install
