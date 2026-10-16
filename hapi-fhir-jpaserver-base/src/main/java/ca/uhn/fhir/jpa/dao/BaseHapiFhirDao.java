@@ -1803,8 +1803,10 @@ public abstract class BaseHapiFhirDao<T extends IBaseResource> extends BaseStora
 			}
 		}
 
-		// Advanced indexing - Index standard search params in the FullText index
-		if (myStorageSettings.isHibernateSearchIndexSearchParams()) {
+		// Full-text pages also need the native sort fields before SQL filters
+		// intersect candidate chunks. Structured searches can still use SQL.
+		if (myStorageSettings.isHibernateSearchIndexSearchParams()
+				|| myStorageSettings.isHibernateSearchIndexFullText()) {
 			if (theResource != null) {
 				ExtendedHSearchIndexData hSearchIndexData =
 						myFulltextSearchSvc.extractLuceneIndexData(theResource, theEntity, theNewParams);

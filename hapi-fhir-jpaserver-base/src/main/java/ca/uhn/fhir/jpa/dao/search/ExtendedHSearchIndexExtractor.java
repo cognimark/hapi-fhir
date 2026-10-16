@@ -88,6 +88,8 @@ public class ExtendedHSearchIndexExtractor {
 		}
 
 		retVal.setForcedId(theResource.getIdElement().getIdPart());
+		// Native _id sorting reads the token field, not the projection-only forced ID.
+		retVal.addTokenIndexDataIfNotPresent("_id", null, theResource.getIdElement().getIdPart());
 
 		// todo add a flag ot StorageSettings to suppress this
 		extractAutocompleteTokens(theResource, retVal);

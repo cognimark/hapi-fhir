@@ -1,11 +1,10 @@
 # Cognimark HAPI core fork
 
-Status, October 9, 2026: Core has deployed the source-built ARM64 `.5` runtime
-with long-ID storage, JSON XHTML preservation, heartbeat lifecycle repair and
-single-owner native-work recovery and existing-reference prefetch. The `.6`
-incoming-reference prefetch change is under runtime/performance qualification.
-Core owns deployment and ongoing full-rebuild
-acceptance; a library version or unit-test pass is not a production-status claim.
+Status, October 16, 2026: Core has deployed the source-built runtime with the
+`.6` storage and reference-index fixes. The `.7` JPA server library adds scoped
+full-text counts and pagination and is under runtime qualification. Core owns
+deployment and index-coverage acceptance; a library build or unit-test pass is
+not a production-status claim.
 
 ## Baseline and ownership
 
@@ -51,8 +50,8 @@ qualified by this design.
    the limit, without weakening strict FHIR validation.
 5. Qualify transaction receipts, references, tenant isolation, conditional
    writes, history, deletion, restart and populated-schema migration.
-6. Complete Core's independent retained-input readback and exact-version KG
-   delivery tests before activating product refresh. Fork creation, a successful
+6. Complete Core's independent retained-input readback and authorized FHIR
+   query tests before activating product refresh. Fork creation, a successful
    compile or an image push alone does not satisfy these gates.
 
 No upstream pull request is part of this internal customization. This fork
@@ -64,7 +63,8 @@ The model artifact remains `8.12.1-cognimark.1`. The
 `hapi-fhir-base` artifact is `8.12.1-cognimark.2`. The scheduler (`hapi-fhir-jpa`)
 and Batch2 artifacts use `8.12.1-cognimark.3`. The in-development
 storage, search-parameter, Batch2-job and `hapi-fhir-jpaserver-base` artifacts
-use `8.12.1-cognimark.6`; other upstream
+use `8.12.1-cognimark.6`, except `hapi-fhir-jpaserver-base`, which uses
+`8.12.1-cognimark.7`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 The starter must explicitly select each qualified custom artifact with dependency management.
@@ -72,6 +72,28 @@ The focused CI workflow uses the same digest-pinned Maven 3.9.12 / Java 17
 container as the starter and image build. Do not depend on the hosted runner's
 ambient Maven version: newer model validation rejects duplicate plugin entries
 in the upstream JPA POM before the selected tests can execute.
+
+## Full-text query scope and pagination
+
+The `.7` JPA server library applies SQL partition and structured predicates to
+Lucene candidates before counting. Counts sum the native SQL count queries
+across disjoint candidate chunks. A Lucene-only total does not establish the
+number of resources in the caller's partition or patient filter.
+
+Ordinary full-text searches apply their offset and page size once across the
+filtered, ordered chunks. Applying the offset to each candidate chunk loses
+matches when a search spans multiple chunks. Core owns the HTTP/PostgreSQL
+regression in `tests/test_hapi_fulltext_docker.py`, including two tenants,
+patient/status filters, more than two native chunks, exact totals, and paging.
+Qualification and index readiness are independent of a library build or push.
+
+Full-text indexing also populates HAPI's native search-parameter sort fields,
+including the `_id` token field consumed by its sort helper. The projection-only
+forced-ID field cannot provide that ordering. SQL filters determine membership while the native full-text candidate order
+is retained across chunks, independent of database collation.
+The `advanced_lucene_indexing` setting still controls whether ordinary
+structured queries use Lucene; it remains disabled during this rollout, so
+structured reads do not depend on full-text backfill completeness.
 
 ## Transaction-local reference prefetch
 

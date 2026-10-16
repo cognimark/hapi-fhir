@@ -467,22 +467,21 @@ public class SearchBuilder implements ISearchBuilder<JpaPid> {
 
 		init(theParams, theSearchUuid, theRequestPartitionId);
 
-		if (checkUseHibernateSearch()) {
-			return myFulltextSearchSvc.count(myResourceName, theParams.clone());
-		}
-
 		SearchQueryProperties properties = mySearchProperties.clone();
 		properties.setDoCountOnlyFlag(true);
 		properties.setSortSpec(null); // counts don't require sorts
 		properties.setMaxResultsRequested(null);
 		properties.setOffset(null);
 		List<ISearchQueryExecutor> queries = createQuery(theParams.clone(), properties, theRequest, null);
-		if (queries.isEmpty()) {
-			return 0L;
-		} else {
-			JpaPid jpaPid = queries.get(0).next();
-			return jpaPid.getId();
+		long count = 0;
+		for (ISearchQueryExecutor query : queries) {
+			try (query) {
+				while (query.hasNext()) {
+					count += query.next().getId();
+				}
+			}
 		}
+		return count;
 	}
 
 	/**
@@ -619,7 +618,8 @@ public class SearchBuilder implements ISearchBuilder<JpaPid> {
 					!fulltextExecutor.hasNext()
 							||
 							// Our hibernate search query doesn't respect partitions yet
-							(!myPartitionSettings.isPartitioningEnabled()
+							(!theSearchProperties.isDoCountOnlyFlag()
+									&& !myPartitionSettings.isPartitioningEnabled()
 									&&
 									// were there AND terms left?  Then we still need the db.
 									theParams.isEmpty()
@@ -644,12 +644,40 @@ public class SearchBuilder implements ISearchBuilder<JpaPid> {
 				ourLog.trace("Query needs db after HSearch.  Chunking.");
 				// Finish the query in the database for the rest of the search parameters, sorting, partitioning, etc.
 				// We break the pids into chunks that fit in the 1k limit for jdbc bind params.
-				QueryChunker.chunk(
-						fulltextExecutor,
-						SearchBuilder.getMaximumPageSize(),
-						// for each list of (SearchBuilder.getMaximumPageSize())
-						// we create a chunked query and add it to 'queries'
-						t -> doCreateChunkedQueries(theParams, t, theSearchProperties, theRequest, queries));
+				ArrayList<ISearchQueryExecutor> chunks = new ArrayList<>();
+				boolean normalSearch = theParams.getEverythingMode() == null;
+				try (ISearchQueryExecutor candidates = fulltextExecutor) {
+					QueryChunker.chunk(
+							candidates,
+							SearchBuilder.getMaximumPageSize(),
+							t -> {
+								SearchQueryProperties properties = theSearchProperties.clone();
+								ArrayList<ISearchQueryExecutor> filtered = new ArrayList<>();
+								if (normalSearch) {
+									// SQL applies the tenant and remaining predicates before a
+									// single offset is applied across all matching chunks.
+									properties.setOffset(null);
+									if (!properties.isDoCountOnlyFlag()) {
+										properties.setDeduplicateInDatabase(true);
+										properties.setSortSpec(null);
+									}
+								}
+								doCreateChunkedQueries(theParams, t, properties, theRequest, filtered);
+								if (normalSearch && !properties.isDoCountOnlyFlag()) {
+									for (ISearchQueryExecutor query : filtered) {
+										chunks.add(SearchQueryExecutors.inCandidateOrder(t, query));
+									}
+								} else {
+									chunks.addAll(filtered);
+								}
+							});
+				}
+				if (normalSearch && !theSearchProperties.isDoCountOnlyFlag()) {
+					queries.add(SearchQueryExecutors.window(
+							chunks, theSearchProperties.getOffset(), theSearchProperties.getMaxResultsRequested()));
+				} else {
+					queries.addAll(chunks);
+				}
 			}
 		} else {
 			// do everything in the database.
@@ -755,7 +783,9 @@ public class SearchBuilder implements ISearchBuilder<JpaPid> {
 		if (thePids.size() < getMaximumPageSize()) {
 			thePids = normalizeIdListForInClause(thePids);
 		}
-		theSearchQueryProperties.setMaxResultsRequested(thePids.size());
+		if (!theSearchQueryProperties.isDoCountOnlyFlag()) {
+			theSearchQueryProperties.setMaxResultsRequested(thePids.size());
+		}
 		createChunkedQuery(theParams, theSearchQueryProperties, theRequest, thePids, theQueries);
 	}
 
