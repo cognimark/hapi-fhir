@@ -1,10 +1,11 @@
 # Cognimark HAPI core fork
 
 Status, October 16, 2026: Core has deployed the source-built runtime with the
-`.6` storage and reference-index fixes. The `.7` JPA server library adds scoped
-full-text counts and pagination and is under runtime qualification. Core owns
-deployment and index-coverage acceptance; a library build or unit-test pass is
-not a production-status claim.
+`.6` storage/reference fixes and `.7` JPA server library for scoped full-text
+counts, ordering, and pagination. The exact AMD64 and ARM64 runtime packages
+passed native query and persistence qualification. Core owns deployment and
+per-resource-type acceptance of the running BSC backfill; a library build or
+unit-test pass does not establish index coverage.
 
 ## Baseline and ownership
 
