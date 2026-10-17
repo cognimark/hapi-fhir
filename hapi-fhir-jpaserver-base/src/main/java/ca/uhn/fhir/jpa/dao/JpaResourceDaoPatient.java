@@ -62,7 +62,6 @@ public class JpaResourceDaoPatient<T extends IBaseResource> extends BaseHapiFhir
 			SortSpec theSort,
 			StringAndListParam theContent,
 			StringAndListParam theNarrative,
-			StringAndListParam theFilter,
 			StringAndListParam theTypes,
 			boolean theMdmExpand,
 			RequestDetails theRequest) {
@@ -81,9 +80,8 @@ public class JpaResourceDaoPatient<T extends IBaseResource> extends BaseHapiFhir
 		}
 		if (theTypes != null) {
 			paramMap.add(Constants.PARAM_TYPE, theTypes);
-		} else {
-			paramMap.setIncludes(Collections.singleton(IResource.INCLUDE_ALL.asRecursive()));
 		}
+		paramMap.setIncludes(Collections.singleton(IResource.INCLUDE_ALL.asRecursive()));
 
 		paramMap.setEverythingMode(
 				theIds != null && theIds.getValuesAsQueryTokens().size() == 1
@@ -150,7 +148,6 @@ public class JpaResourceDaoPatient<T extends IBaseResource> extends BaseHapiFhir
 				theQueryParams.getSort(),
 				theQueryParams.getContent(),
 				theQueryParams.getNarrative(),
-				theQueryParams.getFilter(),
 				theQueryParams.getTypes(),
 				theQueryParams.getMdmExpand(),
 				theRequestDetails);
@@ -171,7 +168,6 @@ public class JpaResourceDaoPatient<T extends IBaseResource> extends BaseHapiFhir
 				theQueryParams.getSort(),
 				theQueryParams.getContent(),
 				theQueryParams.getNarrative(),
-				theQueryParams.getFilter(),
 				theQueryParams.getTypes(),
 				theQueryParams.getMdmExpand(),
 				theRequestDetails);

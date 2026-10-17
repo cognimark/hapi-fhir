@@ -100,15 +100,6 @@ public abstract class BaseJpaResourceProviderPatient<T extends IBaseResource> ex
 					List<IPrimitiveType<String>> theNarrative,
 			@Description(
 							shortDefinition =
-									"Filter the resources to return only resources matching the given _filter filter (note that this filter is applied only to results which link to the given patient, not to the patient itself or to supporting resources linked to by the matched resources)")
-					@OperationParam(
-							name = Constants.PARAM_FILTER,
-							min = 0,
-							max = OperationParam.MAX_UNLIMITED,
-							typeName = "string")
-					List<IPrimitiveType<String>> theFilter,
-			@Description(
-							shortDefinition =
 									"Filter the resources to return only resources matching the given _type filter. When _type is specified, only resources of the listed types are returned; the patient anchor resource itself is also subject to this filter and is omitted unless Patient is included in _type.")
 					@OperationParam(
 							name = Constants.PARAM_TYPE,
@@ -133,7 +124,6 @@ public abstract class BaseJpaResourceProviderPatient<T extends IBaseResource> ex
 			everythingParams.setSort(theSortSpec);
 			everythingParams.setContent(toStringAndList(theContent));
 			everythingParams.setNarrative(toStringAndList(theNarrative));
-			everythingParams.setFilter(toStringAndList(theFilter));
 			everythingParams.setTypes(toStringAndList(theTypes));
 			everythingParams.setMdmExpand(resolveNullValue(theMdmExpand));
 
@@ -189,15 +179,6 @@ public abstract class BaseJpaResourceProviderPatient<T extends IBaseResource> ex
 					List<IPrimitiveType<String>> theNarrative,
 			@Description(
 							shortDefinition =
-									"Filter the resources to return only resources matching the given _filter filter (note that this filter is applied only to results which link to the given patient, not to the patient itself or to supporting resources linked to by the matched resources)")
-					@OperationParam(
-							name = Constants.PARAM_FILTER,
-							min = 0,
-							max = OperationParam.MAX_UNLIMITED,
-							typeName = "string")
-					List<IPrimitiveType<String>> theFilter,
-			@Description(
-							shortDefinition =
 									"Filter the resources to return only resources matching the given _type filter. When _type is specified, only resources of the listed types are returned; the patient anchor resource itself is also subject to this filter and is omitted unless Patient is included in _type.")
 					@OperationParam(
 							name = Constants.PARAM_TYPE,
@@ -229,7 +210,6 @@ public abstract class BaseJpaResourceProviderPatient<T extends IBaseResource> ex
 			everythingParams.setSort(theSortSpec);
 			everythingParams.setContent(toStringAndList(theContent));
 			everythingParams.setNarrative(toStringAndList(theNarrative));
-			everythingParams.setFilter(toStringAndList(theFilter));
 			everythingParams.setTypes(toStringAndList(theTypes));
 			everythingParams.setMdmExpand(resolveNullValue(theMdmExpand));
 

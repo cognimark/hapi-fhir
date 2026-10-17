@@ -1083,6 +1083,7 @@ public class SearchBuilder implements ISearchBuilder<JpaPid> {
 
 		queryStack3.addPredicateEverythingOperation(
 				myResourceName, typeSourceResources, targetPids.toArray(EMPTY_JPA_PID_ARRAY));
+		addLastUpdatePredicate(sqlBuilder);
 
 		// Add PID list predicate for full text search and/or lastn operation
 		addPidListPredicate(thePidList, sqlBuilder);
@@ -1095,19 +1096,6 @@ public class SearchBuilder implements ISearchBuilder<JpaPid> {
 			queryStack3.addGrouping();
 			queryStack3.addOrdering();
 			queryStack3.setUseAggregate(true);
-		}
-
-		if (myParams.getEverythingMode().isPatient()) {
-			/*
-			 * NB: patient-compartment limitation
-			 *
-			 * We are manually excluding Group and List resources
-			 * from the patient-compartment for $everything operations on Patient type/instance.
-			 *
-			 * See issue: https://github.com/hapifhir/hapi-fhir/issues/7118
-			 */
-			sqlBuilder.excludeResourceTypesPredicate(
-					SearchParameterUtil.RESOURCE_TYPES_TO_SP_TO_OMIT_FROM_PATIENT_COMPARTMENT.keySet());
 		}
 
 		/*
