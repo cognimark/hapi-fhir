@@ -490,37 +490,7 @@
 							<baseResourceNames></baseResourceNames>
 						</configuration>
 					</execution>
-				</executions>
-				<dependencies>
-					<dependency>
-						<groupId>ca.uhn.hapi.fhir</groupId>
-						<artifactId>hapi-fhir-structures-dstu2</artifactId>
-						<version>${project.parent.version}</version>
-					</dependency>
-					<dependency>
-						<groupId>ca.uhn.hapi.fhir</groupId>
-						<artifactId>hapi-fhir-structures-dstu3</artifactId>
-						<version>${project.parent.version}</version>
-					</dependency>
-					<dependency>
-						<groupId>ca.uhn.hapi.fhir</groupId>
-						<artifactId>hapi-fhir-structures-r4</artifactId>
-						<version>${project.parent.version}</version>
-					</dependency>
-					<dependency>
-						<groupId>ca.uhn.hapi.fhir</groupId>
-						<artifactId>hapi-fhir-validation-resources-dstu3</artifactId>
-						<version>${project.parent.version}</version>
-					</dependency>
-				</dependencies>
-			</plugin>
-
-			<!-- Generate the DDL schema files -->
-			<plugin>
-				<groupId>ca.uhn.hapi.fhir</groupId>
-				<artifactId>hapi-tinder-plugin</artifactId>
-				<version>${project.parent.version}</version>
-				<executions>
+					<!-- Generate the DDL schema files -->
 					<execution>
 						<id>generate-ddl-legacy</id>
 						<phase>process-classes</phase>
@@ -532,17 +502,17 @@
 							<outputDirectory>${project.build.directory}/classes/ca/uhn/hapi/fhir/jpa/docs/database/nonpartitioned</outputDirectory>
 						</configuration>
 					</execution>
-				<execution>
-					<id>generate-ddl-partitioned</id>
-					<phase>process-classes</phase>
-				<goals>
-					<goal>generate-ddl</goal>
-				</goals>
-					<configuration>
-						<databasePartitionMode>true</databasePartitionMode>
-						<outputDirectory>${project.build.directory}/classes/ca/uhn/hapi/fhir/jpa/docs/database/partitioned</outputDirectory>
-					</configuration>
-				</execution>
+					<execution>
+						<id>generate-ddl-partitioned</id>
+						<phase>process-classes</phase>
+						<goals>
+							<goal>generate-ddl</goal>
+						</goals>
+						<configuration>
+							<databasePartitionMode>true</databasePartitionMode>
+							<outputDirectory>${project.build.directory}/classes/ca/uhn/hapi/fhir/jpa/docs/database/partitioned</outputDirectory>
+						</configuration>
+					</execution>
 				</executions>
 				<configuration>
 					<packageNames>
@@ -586,6 +556,26 @@
 					</dialects>
 				</configuration>
 				<dependencies>
+					<dependency>
+						<groupId>ca.uhn.hapi.fhir</groupId>
+						<artifactId>hapi-fhir-structures-dstu2</artifactId>
+						<version>${project.parent.version}</version>
+					</dependency>
+					<dependency>
+						<groupId>ca.uhn.hapi.fhir</groupId>
+						<artifactId>hapi-fhir-structures-dstu3</artifactId>
+						<version>${project.parent.version}</version>
+					</dependency>
+					<dependency>
+						<groupId>ca.uhn.hapi.fhir</groupId>
+						<artifactId>hapi-fhir-structures-r4</artifactId>
+						<version>${project.parent.version}</version>
+					</dependency>
+					<dependency>
+						<groupId>ca.uhn.hapi.fhir</groupId>
+						<artifactId>hapi-fhir-validation-resources-dstu3</artifactId>
+						<version>${project.parent.version}</version>
+					</dependency>
 					<dependency>
 						<groupId>ca.uhn.hapi.fhir</groupId>
 						<artifactId>hapi-fhir-jpaserver-model</artifactId>

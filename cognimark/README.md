@@ -73,9 +73,11 @@ dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 The starter must explicitly select each qualified custom artifact with dependency management.
 The focused CI workflow uses the same digest-pinned Maven 3.9.12 / Java 17
-container as the starter and image build. Do not depend on the hosted runner's
-ambient Maven version: newer model validation rejects duplicate plugin entries
-in the upstream JPA POM before the selected tests can execute.
+container as the starter and image build. The JPA server declares
+`hapi-tinder-plugin` once, retaining all five resource-provider generators, both
+DDL generators, and their dependencies. Its effective plugin configuration is
+unchanged by consolidation and validates under both Maven 3.9.12 and 3.10.0.
+Use the pinned build toolchain instead of the hosted runner's ambient Maven.
 
 ## Full-text query scope and pagination
 
