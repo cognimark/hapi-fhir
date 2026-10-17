@@ -1,11 +1,14 @@
 # Cognimark HAPI core fork
 
-Status, October 16, 2026: Core has deployed the source-built runtime with the
+Status, October 17, 2026: Core has deployed the source-built runtime with the
 `.6` storage/reference fixes and `.7` JPA server library for scoped full-text
 counts, ordering, and pagination. The exact AMD64 and ARM64 runtime packages
 passed native query and persistence qualification. Core owns deployment and
-per-resource-type acceptance of the running BSC backfill; a library build or
-unit-test pass does not establish index coverage.
+per-resource-type acceptance. BSC backfill completed all 28 types on October 17.
+The `.9` starter supplies Hibernate Search 7.2.6.Final for missing-value sorting;
+retained-index upgrade tests and delegated Core attachment-query acceptance
+passed. This library source pin is unchanged by that dependency patch.
+A library build or unit-test pass alone does not establish query acceptance.
 
 ## Baseline and ownership
 
@@ -138,7 +141,7 @@ Core accepted `.6` as production `core-hapi:8` on October 9 at 15:48 UTC, after
 source-pinned AMD64 and ARM64 TLS/PostgreSQL/recovery qualification. Original
 native jobs continued and authorized FHIR/KG reads matched. Core's
 `docs/hapi-reindex.md` records paired synthetic results and live acceptance;
-runtime deployment does not imply completion of the ongoing full BSC rebuild.
+that acceptance preceded completion of the full BSC rebuild.
 
 ```sh
 mvn -B -ntp -f hapi-fhir-jpaserver-searchparam/pom.xml install
