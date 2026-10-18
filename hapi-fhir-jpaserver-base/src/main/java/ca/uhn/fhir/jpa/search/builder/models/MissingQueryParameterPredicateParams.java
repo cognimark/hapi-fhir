@@ -34,17 +34,14 @@ public class MissingQueryParameterPredicateParams {
 
 	public MissingQueryParameterPredicateParams(MissingParameterQueryParams theParams) {
 		myResourceType = theParams.getResourceType();
-		if (theParams.getSourceJoinColumn() != null) {
-			mySourceJoinColumns = theParams.getSourceJoinColumn();
-		} else {
-			ResourceTablePredicateBuilder resource =
-					theParams.getSqlBuilder().getOrCreateResourceTablePredicateBuilder();
-			mySourceJoinColumns = resource.getJoinColumns();
-			// NOT EXISTS cannot constrain the outer resource through an index row.
-			Condition partition = resource.createPartitionIdPredicate(theParams.getRequestPartitionId());
-			if (partition != null) {
-				theParams.getSqlBuilder().addPredicate(partition);
-			}
+		ResourceTablePredicateBuilder resource = theParams.getSqlBuilder().getOrCreateResourceTablePredicateBuilder();
+		mySourceJoinColumns =
+				theParams.getSourceJoinColumn() != null ? theParams.getSourceJoinColumn() : resource.getJoinColumns();
+		// NOT EXISTS cannot constrain the outer resource through an index row,
+		// including when the missing parameter is reached through a reference.
+		Condition partition = resource.createPartitionIdPredicate(theParams.getRequestPartitionId());
+		if (partition != null) {
+			theParams.getSqlBuilder().addPredicate(partition);
 		}
 		myIsMissing = theParams.isMissing();
 		myParamName = theParams.getParamName();

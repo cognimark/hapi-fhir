@@ -62,7 +62,7 @@ The model artifact remains `8.12.1-cognimark.1`. The
 and Batch2 artifacts use `8.12.1-cognimark.3`. The custom
 storage, search-parameter, Batch2-job and `hapi-fhir-jpaserver-base` artifacts
 use `8.12.1-cognimark.6`, except `hapi-fhir-jpaserver-base`, which uses
-`8.12.1-cognimark.10`; other upstream
+`8.12.1-cognimark.11`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 Core's HAPI service explicitly selects each qualified custom artifact with dependency management.
