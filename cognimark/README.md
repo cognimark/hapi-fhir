@@ -20,14 +20,14 @@ Core's isolated native traversal tests and live patient-chart acceptance.
   verified on September 24, 2026.
 - Exact upstream commit: `c8cc1dbbb2568610b68de626ea00c21080e0b8f8`.
 - Development branch: `cognimark/8.12.1-long-resource-ids`.
-- Service packaging: the existing
-  [Cognimark starter fork](https://github.com/cognimark/hapi-fhir-jpaserver-starter/tree/cognimark/8.12.1-long-resource-ids).
+- Service implementation, packaging and native qualification:
+  [Core's HAPI service](https://github.com/cognimark/core-stack/tree/main/services/hapi).
 - Infrastructure, schema rollout, ingest contracts and source admission remain
   owned by Core. Do not put environment configuration, credentials or clinical
   fixtures in this public repository.
 
-This repository owns actual HAPI library source changes. The starter consumes
-the qualified library build; Core consumes its immutable container image. Core
+This repository owns actual HAPI library source changes. Core's HAPI service
+builds the qualified libraries and its immutable container image. Core
 must not maintain a second copy of the HAPI source patch. Preserve upstream
 history and keep the customization reviewable against the exact release tag.
 The earlier 8.12.0 planning branch is superseded. The historical 8.4/8.10
@@ -52,7 +52,7 @@ qualified by this design.
 
 1. Add regression tests and demonstrate their failure against the baseline.
 2. Apply the source changes and build version-pinned artifacts with Maven.
-3. Package the changed libraries into the starter artifact. Do not inject loose
+3. Package the changed libraries into Core's HAPI service. Do not inject loose
    replacement classes through a runtime classpath override.
 4. Qualify 64/65/88/256/512-character resource identities and rejection above
    the limit, without weakening strict FHIR validation.
@@ -75,7 +75,7 @@ use `8.12.1-cognimark.6`, except `hapi-fhir-jpaserver-base`, which uses
 `8.12.1-cognimark.8`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
-The starter must explicitly select each qualified custom artifact with dependency management.
+Core's HAPI service explicitly selects each qualified custom artifact with dependency management.
 The focused CI workflow uses the same digest-pinned Maven 3.9.12 / Java 17
 container as the starter and image build. The JPA server declares
 `hapi-tinder-plugin` once, retaining all five resource-provider generators, both

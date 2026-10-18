@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Match the starter's container-owned checkout; retain Git's ownership checks.
+          # Use a container-owned checkout; retain Git's ownership checks.
           path: .cognimark-hapi-core
       - name: Verify the production builder toolchain
         run: mvn --version
