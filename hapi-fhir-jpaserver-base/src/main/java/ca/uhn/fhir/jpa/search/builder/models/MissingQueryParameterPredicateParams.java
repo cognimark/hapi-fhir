@@ -20,41 +20,35 @@
 package ca.uhn.fhir.jpa.search.builder.models;
 
 import ca.uhn.fhir.interceptor.model.RequestPartitionId;
-import ca.uhn.fhir.jpa.search.builder.predicate.ResourceTablePredicateBuilder;
+import com.healthmarketscience.sqlbuilder.dbspec.basic.DbColumn;
 
+/** The resource at the current point in a search chain, and its correlated columns. */
 public class MissingQueryParameterPredicateParams {
-	/**
-	 * Base ResourceTable predicate builder
-	 */
-	private ResourceTablePredicateBuilder myResourceTablePredicateBuilder;
-	/**
-	 * The missing boolean.
-	 * True if looking for missing fields.
-	 * False if looking for non-missing fields.
-	 */
-	private boolean myIsMissing;
-	/**
-	 * The Search Parameter Name
-	 */
-	private String myParamName;
-	/**
-	 * The partition id
-	 */
-	private RequestPartitionId myRequestPartitionId;
+	private final String myResourceType;
+	private final DbColumn[] mySourceJoinColumns;
+	private final boolean myIsMissing;
+	private final String myParamName;
+	private final RequestPartitionId myRequestPartitionId;
 
-	public MissingQueryParameterPredicateParams(
-			ca.uhn.fhir.jpa.search.builder.predicate.ResourceTablePredicateBuilder theResourceTablePredicateBuilder,
-			boolean theTheMissing,
-			String theParamName,
-			ca.uhn.fhir.interceptor.model.RequestPartitionId theRequestPartitionId) {
-		myResourceTablePredicateBuilder = theResourceTablePredicateBuilder;
-		myIsMissing = theTheMissing;
-		myParamName = theParamName;
-		myRequestPartitionId = theRequestPartitionId;
+	public MissingQueryParameterPredicateParams(MissingParameterQueryParams theParams) {
+		myResourceType = theParams.getResourceType();
+		mySourceJoinColumns = theParams.getSourceJoinColumn() != null
+				? theParams.getSourceJoinColumn()
+				: theParams
+						.getSqlBuilder()
+						.getOrCreateResourceTablePredicateBuilder()
+						.getJoinColumns();
+		myIsMissing = theParams.isMissing();
+		myParamName = theParams.getParamName();
+		myRequestPartitionId = theParams.getRequestPartitionId();
 	}
 
-	public ca.uhn.fhir.jpa.search.builder.predicate.ResourceTablePredicateBuilder getResourceTablePredicateBuilder() {
-		return myResourceTablePredicateBuilder;
+	public String getResourceType() {
+		return myResourceType;
+	}
+
+	public DbColumn[] getSourceJoinColumns() {
+		return mySourceJoinColumns;
 	}
 
 	public boolean isMissing() {
@@ -65,7 +59,7 @@ public class MissingQueryParameterPredicateParams {
 		return myParamName;
 	}
 
-	public ca.uhn.fhir.interceptor.model.RequestPartitionId getRequestPartitionId() {
+	public RequestPartitionId getRequestPartitionId() {
 		return myRequestPartitionId;
 	}
 }

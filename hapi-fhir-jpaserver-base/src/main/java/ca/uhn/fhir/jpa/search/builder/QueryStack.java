@@ -728,12 +728,12 @@ public class QueryStack {
 		Optional<BaseSearchParamPredicateBuilder> custom =
 				sqlBuilder.getCustomPredicateBuilder(theParams.getParamType(), theParams.getParamName());
 		if (custom.isPresent()) {
-			return createMissingPredicateForCustomIndexProvider(theParams, sqlBuilder, custom.get());
+			return createMissingPredicateForCustomIndexProvider(theParams, custom.get());
 		}
 
 		if (myStorageSettings.getIndexMissingFields() == JpaStorageSettings.IndexEnabledEnum.DISABLED) {
 			// new search
-			return createMissingPredicateForUnindexedMissingFields(theParams, sqlBuilder);
+			return createMissingPredicateForUnindexedMissingFields(theParams);
 		} else {
 			// old search
 			return createMissingPredicateForIndexedMissingFields(theParams, sqlBuilder);
@@ -744,12 +744,9 @@ public class QueryStack {
 	 * Builds the {@code :missing} predicate using the custom index builder
 	 */
 	private Condition createMissingPredicateForCustomIndexProvider(
-			MissingParameterQueryParams theParams,
-			SearchQueryBuilder theSqlBuilder,
-			BaseSearchParamPredicateBuilder theCustomPredicateBuilder) {
-		ResourceTablePredicateBuilder table = theSqlBuilder.getOrCreateResourceTablePredicateBuilder();
-		MissingQueryParameterPredicateParams missingQueryParameterPredicate = new MissingQueryParameterPredicateParams(
-				table, theParams.isMissing(), theParams.getParamName(), theParams.getRequestPartitionId());
+			MissingParameterQueryParams theParams, BaseSearchParamPredicateBuilder theCustomPredicateBuilder) {
+		MissingQueryParameterPredicateParams missingQueryParameterPredicate =
+				new MissingQueryParameterPredicateParams(theParams);
 		return theCustomPredicateBuilder.createPredicateParamMissingValue(missingQueryParameterPredicate);
 	}
 
@@ -835,14 +832,10 @@ public class QueryStack {
 	 * New way of searching for missing fields.
 	 * Missing values must not indexed!
 	 */
-	private Condition createMissingPredicateForUnindexedMissingFields(
-			MissingParameterQueryParams theParams, SearchQueryBuilder sqlBuilder) {
-		ResourceTablePredicateBuilder table = sqlBuilder.getOrCreateResourceTablePredicateBuilder();
-
+	private Condition createMissingPredicateForUnindexedMissingFields(MissingParameterQueryParams theParams) {
 		ICanMakeMissingParamPredicate innerQuery = PredicateBuilderFactory.createPredicateBuilderForParamType(
 				theParams.getParamType(), theParams.getSqlBuilder(), this);
-		return innerQuery.createPredicateParamMissingValue(new MissingQueryParameterPredicateParams(
-				table, theParams.isMissing(), theParams.getParamName(), theParams.getRequestPartitionId()));
+		return innerQuery.createPredicateParamMissingValue(new MissingQueryParameterPredicateParams(theParams));
 	}
 
 	public Condition createPredicateCoords(

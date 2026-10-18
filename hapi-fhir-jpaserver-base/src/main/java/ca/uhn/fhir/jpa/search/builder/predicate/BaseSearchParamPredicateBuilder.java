@@ -151,14 +151,10 @@ public abstract class BaseSearchParamPredicateBuilder extends BaseJoiningPredica
 		subquery.addFromTable(getTable());
 
 		Condition hashIdentityPredicate = createHashIdentityPredicate(
-				theParams.getRequestPartitionId(),
-				theParams.getResourceTablePredicateBuilder().getResourceType(),
-				theParams.getParamName());
+				theParams.getRequestPartitionId(), theParams.getResourceType(), theParams.getParamName());
 
 		Condition subQueryCondition = ComboCondition.and(
-				BinaryCondition.equalTo(
-						getResourceIdColumn(),
-						theParams.getResourceTablePredicateBuilder().getResourceIdColumn()),
+				SearchQueryBuilder.toJoinCondition(getJoinColumns(), theParams.getSourceJoinColumns()),
 				hashIdentityPredicate);
 
 		subquery.addCondition(
