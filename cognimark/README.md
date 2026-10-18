@@ -1,14 +1,18 @@
 # Cognimark HAPI core fork
 
-Status, October 17, 2026: Core has deployed the source-built runtime with the
-`.6` storage/reference fixes and `.7` JPA server library for scoped full-text
-counts, ordering, and pagination. The exact AMD64 and ARM64 runtime packages
+Status, October 18, 2026: Core has deployed the source-built runtime with the
+`.6` storage/reference fixes and `.8` JPA server library for scoped full-text
+queries and patient traversal, packaged in starter `.11` as `core-hapi:14`.
+The exact AMD64 and ARM64 runtime packages
 passed native query and persistence qualification. Core owns deployment and
 per-resource-type acceptance. BSC backfill completed all 28 types on October 17.
 The `.9` starter supplies Hibernate Search 7.2.6.Final for missing-value sorting;
 retained-index upgrade tests and delegated Core attachment-query acceptance
 passed. This library source pin is unchanged by that dependency patch.
 A library build or unit-test pass alone does not establish query acceptance.
+
+The `.8` patient `$everything` traversal and update-filter corrections passed
+Core's isolated native traversal tests and live patient-chart acceptance.
 
 ## Baseline and ownership
 
@@ -37,8 +41,8 @@ The private database-partitioned storage path accepts resource IDs using
 storage extension, not a claim that IDs above 64 conform to the FHIR standard.
 Do not broaden version IDs, ETags, the global FHIR validator or the ID alphabet.
 
-The bounded source changes belong to storage ID admission and the resource-ID
-column model. Rebuild all consumers of compile-time constants, including the
+Customizations cover storage identity, indexed retrieval, patient traversal and
+durable batch recovery. Rebuild all consumers of resource-ID constants, including the
 patient-unique-identifier entity. Existing database schema changes must be
 explicitly deployed and verified separately; automatic DDL is not a migration
 or rollback strategy. Legacy non-database-partitioned identity storage is not
@@ -65,10 +69,10 @@ setup and its documentation were prepared with Codex assistance.
 
 The model artifact remains `8.12.1-cognimark.1`. The
 `hapi-fhir-base` artifact is `8.12.1-cognimark.2`. The scheduler (`hapi-fhir-jpa`)
-and Batch2 artifacts use `8.12.1-cognimark.3`. The in-development
+and Batch2 artifacts use `8.12.1-cognimark.3`. The custom
 storage, search-parameter, Batch2-job and `hapi-fhir-jpaserver-base` artifacts
 use `8.12.1-cognimark.6`, except `hapi-fhir-jpaserver-base`, which uses
-`8.12.1-cognimark.7`; other upstream
+`8.12.1-cognimark.8`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 The starter must explicitly select each qualified custom artifact with dependency management.
@@ -78,6 +82,21 @@ container as the starter and image build. The JPA server declares
 DDL generators, and their dependencies. Its effective plugin configuration is
 unchanged by consolidation and validates under both Maven 3.9.12 and 3.10.0.
 Use the pinned build toolchain instead of the hosted runner's ambient Maven.
+
+## Patient traversal
+
+Patient `$everything` preserves Group/List membership records and expands linked
+references when `_type` is specified. Traversal does not recurse through another
+Patient or use Group/List membership to collect another patient's records.
+`_lastUpdated` applies to related-resource queries. The operation provider
+advertises its supported controls; its input contract does not include `_filter`.
+Inline attachments remain unchanged; attachment URLs require separate reads.
+
+Core's `tests/test_hapi_everything_docker.py` qualifies the packaged server with
+synthetic PostgreSQL data, native pagination, related resources, tenant/patient
+isolation, inline attachments and update bounds. All four tests pass, alongside
+13 fork search-builder tests and 16 selected starter/package tests. Runtime
+deployment and clinical completeness acceptance remain Core-owned.
 
 ## Full-text query scope and pagination
 
