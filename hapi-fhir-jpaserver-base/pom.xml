@@ -11,7 +11,7 @@
 	</parent>
 
 	<artifactId>hapi-fhir-jpaserver-base</artifactId>
-	<version>8.12.1-cognimark.9</version>
+	<version>8.12.1-cognimark.10</version>
 	<packaging>jar</packaging>
 
 	<name>HAPI FHIR JPA Server</name>

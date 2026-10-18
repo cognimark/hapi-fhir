@@ -62,7 +62,7 @@ The model artifact remains `8.12.1-cognimark.1`. The
 and Batch2 artifacts use `8.12.1-cognimark.3`. The custom
 storage, search-parameter, Batch2-job and `hapi-fhir-jpaserver-base` artifacts
 use `8.12.1-cognimark.6`, except `hapi-fhir-jpaserver-base`, which uses
-`8.12.1-cognimark.9`; other upstream
+`8.12.1-cognimark.10`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 Core's HAPI service explicitly selects each qualified custom artifact with dependency management.
@@ -306,3 +306,8 @@ parameter. No stored resource or index format changes are needed.
 Core's native PostgreSQL qualification tests cover both tenant partitions,
 search and count, GET and POST, dates, tokens, references, logical filters and
 chained presence. Run them against the packaged server before release.
+
+Missing-field searches constrain the outer resource to the request partition as
+well as correlating the index subquery. A negative existence predicate cannot
+inherit tenant isolation from an index row that does not exist. Native search
+and count qualification covers queries with and without an explicit ID filter.

@@ -20,6 +20,8 @@
 package ca.uhn.fhir.jpa.search.builder.models;
 
 import ca.uhn.fhir.interceptor.model.RequestPartitionId;
+import ca.uhn.fhir.jpa.search.builder.predicate.ResourceTablePredicateBuilder;
+import com.healthmarketscience.sqlbuilder.Condition;
 import com.healthmarketscience.sqlbuilder.dbspec.basic.DbColumn;
 
 /** The resource at the current point in a search chain, and its correlated columns. */
@@ -32,12 +34,18 @@ public class MissingQueryParameterPredicateParams {
 
 	public MissingQueryParameterPredicateParams(MissingParameterQueryParams theParams) {
 		myResourceType = theParams.getResourceType();
-		mySourceJoinColumns = theParams.getSourceJoinColumn() != null
-				? theParams.getSourceJoinColumn()
-				: theParams
-						.getSqlBuilder()
-						.getOrCreateResourceTablePredicateBuilder()
-						.getJoinColumns();
+		if (theParams.getSourceJoinColumn() != null) {
+			mySourceJoinColumns = theParams.getSourceJoinColumn();
+		} else {
+			ResourceTablePredicateBuilder resource =
+					theParams.getSqlBuilder().getOrCreateResourceTablePredicateBuilder();
+			mySourceJoinColumns = resource.getJoinColumns();
+			// NOT EXISTS cannot constrain the outer resource through an index row.
+			Condition partition = resource.createPartitionIdPredicate(theParams.getRequestPartitionId());
+			if (partition != null) {
+				theParams.getSqlBuilder().addPredicate(partition);
+			}
+		}
 		myIsMissing = theParams.isMissing();
 		myParamName = theParams.getParamName();
 		myRequestPartitionId = theParams.getRequestPartitionId();
