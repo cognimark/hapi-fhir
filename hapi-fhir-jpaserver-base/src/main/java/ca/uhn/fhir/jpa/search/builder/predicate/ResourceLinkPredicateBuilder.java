@@ -1062,14 +1062,15 @@ public class ResourceLinkPredicateBuilder extends BaseJoiningPredicateBuilder im
 						.map(path -> BinaryCondition.equalTo(getColumnSourcePath(), generatePlaceholder(path)))
 						.toArray(BinaryCondition[]::new)));
 
-		subquery.addCondition(subQueryCondition);
+		subquery.addCondition(
+				combineWithRequestPartitionIdPredicate(theParams.getRequestPartitionId(), subQueryCondition));
 
 		Condition unaryCondition = UnaryCondition.exists(subquery);
 		if (theParams.isMissing()) {
 			unaryCondition = new NotCondition(unaryCondition);
 		}
 
-		return combineWithRequestPartitionIdPredicate(theParams.getRequestPartitionId(), unaryCondition);
+		return unaryCondition;
 	}
 
 	@VisibleForTesting

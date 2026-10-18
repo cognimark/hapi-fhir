@@ -1047,6 +1047,42 @@ public class QueryStack {
 					throw new InvalidRequestException(Msg.code(1206) + msg);
 				}
 				RestSearchParameterTypeEnum typeEnum = searchParam.getParamType();
+				if (theFilter.getOperation() == SearchFilterParser.CompareOperation.pr) {
+					String value = theFilter.getValue();
+					if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
+						throw new InvalidRequestException("The _filter pr operator requires true or false");
+					}
+					String missing = Boolean.toString(!Boolean.parseBoolean(value));
+					if (theFilter.getParamPath().getNext() != null) {
+						if (typeEnum != RestSearchParameterTypeEnum.REFERENCE) {
+							throw new InvalidRequestException("A chained _filter parameter must be a reference");
+						}
+						ReferenceParam reference = new ReferenceParam(
+								null, theFilter.getParamPath().getNext().toString() + ":missing", missing);
+						return theQueryStack3.createPredicateReference(
+								null,
+								theResourceName,
+								paramName,
+								new ArrayList<>(),
+								Collections.singletonList(reference),
+								null,
+								searchParam,
+								theRequestPartitionId);
+					}
+					if (typeEnum == RestSearchParameterTypeEnum.COMPOSITE) {
+						throw new InvalidRequestException(Msg.code(1207)
+								+ "Composite search parameters not currently supported with _filter clauses");
+					}
+					IQueryParameterType parameter = newParameterInstance(searchParam, ":missing", missing);
+					return theQueryStack3.createMissingParameterQuery(new MissingParameterQueryParams(
+							theQueryStack3.mySqlBuilder,
+							typeEnum,
+							Collections.singletonList(parameter),
+							paramName,
+							theResourceName,
+							null,
+							theRequestPartitionId));
+				}
 				if (typeEnum == RestSearchParameterTypeEnum.URI) {
 					return theQueryStack3.createPredicateUri(
 							null,

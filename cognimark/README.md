@@ -1,18 +1,8 @@
 # Cognimark HAPI core fork
 
-Status, October 18, 2026: Core has deployed the source-built runtime with the
-`.6` storage/reference fixes and `.8` JPA server library for scoped full-text
-queries and patient traversal, packaged in starter `.11` as `core-hapi:14`.
-The exact AMD64 and ARM64 runtime packages
-passed native query and persistence qualification. Core owns deployment and
-per-resource-type acceptance. BSC backfill completed all 28 types on October 17.
-The `.9` starter supplies Hibernate Search 7.2.6.Final for missing-value sorting;
-retained-index upgrade tests and delegated Core attachment-query acceptance
-passed. This library source pin is unchanged by that dependency patch.
-A library build or unit-test pass alone does not establish query acceptance.
-
-The `.8` patient `$everything` traversal and update-filter corrections passed
-Core's isolated native traversal tests and live patient-chart acceptance.
+The fork supplies Core's source-built HAPI libraries. Current deployment and
+native query acceptance are recorded in Core's release documentation; a library
+build or unit-test pass alone does not establish production acceptance.
 
 ## Baseline and ownership
 
@@ -72,7 +62,7 @@ The model artifact remains `8.12.1-cognimark.1`. The
 and Batch2 artifacts use `8.12.1-cognimark.3`. The custom
 storage, search-parameter, Batch2-job and `hapi-fhir-jpaserver-base` artifacts
 use `8.12.1-cognimark.6`, except `hapi-fhir-jpaserver-base`, which uses
-`8.12.1-cognimark.8`; other upstream
+`8.12.1-cognimark.9`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 Core's HAPI service explicitly selects each qualified custom artifact with dependency management.
@@ -304,3 +294,15 @@ regression passes 1,535 checks with eight unrelated opt-in skips. Native ARM64
 acceptance verifies lexical preservation, tenant isolation, decimal precision
 and stale-write rejection. These are bounded runtime/input qualifications, not
 a claim of passing every upstream test or activating the product refresh route.
+
+## Presence queries
+
+The JPA server `.9` library keeps partition predicates inside the correlated
+index subquery for `:missing` searches, including reference parameters. `_filter`
+`pr true/false` uses the same missing-value predicates before any type-specific
+value parsing. Chained presence searches keep the condition on the terminal
+parameter. No stored resource or index format changes are needed.
+
+Core's native PostgreSQL qualification tests cover both tenant partitions,
+search and count, GET and POST, dates, tokens, references, logical filters and
+chained presence. Run them against the packaged server before release.

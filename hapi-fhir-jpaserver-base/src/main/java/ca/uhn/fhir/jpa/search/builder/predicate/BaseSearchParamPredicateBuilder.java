@@ -161,13 +161,14 @@ public abstract class BaseSearchParamPredicateBuilder extends BaseJoiningPredica
 						theParams.getResourceTablePredicateBuilder().getResourceIdColumn()),
 				hashIdentityPredicate);
 
-		subquery.addCondition(subQueryCondition);
+		subquery.addCondition(
+				combineWithRequestPartitionIdPredicate(theParams.getRequestPartitionId(), subQueryCondition));
 
 		Condition unaryCondition = UnaryCondition.exists(subquery);
 		if (theParams.isMissing()) {
 			unaryCondition = new NotCondition(unaryCondition);
 		}
 
-		return combineWithRequestPartitionIdPredicate(theParams.getRequestPartitionId(), unaryCondition);
+		return unaryCondition;
 	}
 }
