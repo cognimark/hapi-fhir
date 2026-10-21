@@ -24,7 +24,7 @@ import java.util.Map;
 
 public enum SearchTotalModeEnum {
 	NONE("none"),
-	ESTIMATED("estimated"),
+	ESTIMATED("estimate"),
 	ACCURATE("accurate");
 
 	private static volatile Map<String, SearchTotalModeEnum> ourCodeToEnum;
