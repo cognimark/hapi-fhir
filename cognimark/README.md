@@ -62,10 +62,16 @@ The model artifact remains `8.12.1-cognimark.1`. The
 and Batch2 artifacts use `8.12.1-cognimark.3`. The custom
 storage, search-parameter, Batch2-job and `hapi-fhir-jpaserver-base` artifacts
 use `8.12.1-cognimark.6`, except `hapi-fhir-jpaserver-base`, which uses
-`8.12.1-cognimark.11`; other upstream
+`8.12.1-cognimark.12`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 Core's HAPI service explicitly selects each qualified custom artifact with dependency management.
+
+The `.12` JPA server library distinguishes deleted reference targets from absent
+identities during transaction prefetch. Automatic placeholder upserts can reuse
+the retained row and its history instead of failing a duplicate-ID insert.
+Missing targets still use the normal negative cache. Core's native ingestion
+suite verifies indexed references and preservation of source deletion ordering.
 The focused CI workflow uses the same digest-pinned Maven 3.9.12 / Java 17
 container as the starter and image build. The JPA server declares
 `hapi-tinder-plugin` once, retaining all five resource-provider generators, both

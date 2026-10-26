@@ -594,6 +594,10 @@ public class TransactionProcessor extends BaseTransactionProcessor {
 				}
 				case REFERENCE_TARGET -> {
 					if (entry.getValue().getDeleted() != null) {
+						// Deleted targets still occupy their FHIR identity. Do not
+						// cache them as absent: placeholder upserts must find and
+						// update the retained row instead of attempting a new insert.
+						foundIds.add(unqualifiedVersionlessId.getValue());
 						iterator.remove();
 						continue;
 					}
