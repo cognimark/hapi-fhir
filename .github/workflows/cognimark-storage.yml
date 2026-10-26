@@ -44,5 +44,5 @@ jobs:
           mvn -B -ntp -f cognimark/batch2-tests/pom.xml test
           mvn -B -ntp -f hapi-fhir-storage-batch2-jobs/pom.xml install
           mvn -B -ntp -f hapi-fhir-jpaserver-base/pom.xml \
-            -Dtest=LocalBatch2WorkRecoveryTest,ReindexPartitionContextTest,JpaJobPersistenceImplTest,ReindexReferencePrefetchTest,SearchBuilderTest,SearchQueryExecutorsTest install
+            -Dtest=LocalBatch2WorkRecoveryTest,ReindexPartitionContextTest,JpaJobPersistenceImplTest,ReindexReferencePrefetchTest,SearchBuilderTest,SearchQueryExecutorsTest,TransactionReferencePrefetchTest install
           mvn -B -ntp -f cognimark/reindex-tests/pom.xml test
