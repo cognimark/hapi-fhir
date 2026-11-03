@@ -2,8 +2,8 @@ package ca.uhn.fhir.jpa.migrate.dao;
 
 import ca.uhn.fhir.jpa.migrate.BaseMigrationTest;
 import ca.uhn.fhir.jpa.migrate.DriverTypeEnum;
-import ca.uhn.fhir.jpa.migrate.HapiMigrationStorageSvc;
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
+import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,14 +22,22 @@ public class AlterMigrationTableIT {
 	static final String TABLE_NAME = "TEST_MIGRATION_TABLE";
 	protected static HapiMigrationDao ourHapiMigrationDao;
 	static JdbcTemplate ourJdbcTemplate;
-	protected static HapiMigrationStorageSvc ourHapiMigrationStorageSvc;
+	private static BasicDataSource ourDataSource;
 
 	@BeforeAll
 	public static void beforeAll() {
-		BasicDataSource dataSource = BaseMigrationTest.getDataSource();
-		ourHapiMigrationDao = new HapiMigrationDao(dataSource, DriverTypeEnum.H2_EMBEDDED, TABLE_NAME);
-		ourJdbcTemplate = new JdbcTemplate(dataSource);
+		ourDataSource = BaseMigrationTest.getDataSource();
+		ourDataSource.setUrl("jdbc:h2:mem:alter_migration_table");
+		ourHapiMigrationDao = new HapiMigrationDao(ourDataSource, DriverTypeEnum.H2_EMBEDDED, TABLE_NAME);
+		ourJdbcTemplate = new JdbcTemplate(ourDataSource);
 		createOldTable();
+	}
+
+	@AfterAll
+	public static void afterAll() throws SQLException {
+		if (ourDataSource != null) {
+			ourDataSource.close();
+		}
 	}
 
 	private static void createOldTable() {

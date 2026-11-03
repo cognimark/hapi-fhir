@@ -1076,7 +1076,7 @@
 		<error_prone_core_version>2.36.0</error_prone_core_version>
 		<mockito_version>5.18.0</mockito_version>
 		<nullaway_version>0.7.9</nullaway_version>
-		<guava_version>33.2.1-jre</guava_version>
+		<guava_version>33.7.2-jre</guava_version>
 		<gson_version>2.12.0</gson_version>
 		<jaxb_bundle_version>2.2.11_1</jaxb_bundle_version>
 		<jaxb_api_version>2.3.1</jaxb_api_version>
@@ -1102,18 +1102,16 @@
 		<hibernate_validator_version>8.0.0.Final</hibernate_validator_version>
 		<httpcore_version>4.4.16</httpcore_version>
 		<httpclient_version>4.5.14</httpclient_version>
-		<jackson_legacy_core_version>2.21.6</jackson_legacy_core_version>
-		<jackson_legacy_databind_version>2.21.6</jackson_legacy_databind_version>
+		<jackson_legacy_core_version>2.21.8</jackson_legacy_core_version>
+		<jackson_legacy_databind_version>2.21.8</jackson_legacy_databind_version>
 
 		<!-- see : https://github.com/FasterXML/jackson/wiki/Jackson-Release-2.22#annotations  -->
 		<jackson_annotations_version>2.21</jackson_annotations_version>
 
-		<!-- pay attention to LTS versions going foward : https://github.com/FasterXML/jackson/wiki/Jackson-Releases#open-branches
-		     3.1.6 or later is required: it clears CVE-2026-19032, CVE-2026-68497, CVE-2026-59888,
-		     CVE-2026-29062 and CVE-2026-54512 through CVE-2026-54518. Jackson 3 also arrives
-		     transitively via elasticsearch-java, which these pins cover as well. -->
-		<jackson_tools_version>3.1.6</jackson_tools_version>
-		<jackson_tools_databind_version>3.1.6</jackson_tools_databind_version>
+		<!-- Keep both Jackson lines on patched LTS versions, including the
+		     Jackson 3 dependencies supplied by elasticsearch-java. -->
+		<jackson_tools_version>3.1.8</jackson_tools_version>
+		<jackson_tools_databind_version>3.1.8</jackson_tools_databind_version>
 
 		<httpclient5_version>5.6.4</httpclient5_version>
 		<httpcore5_version>5.4.3</httpcore5_version>
@@ -1125,7 +1123,7 @@
 		uses a version which lines up with the OTEL instrumentation version, but with "-alpha"
 		appended to it. So we do that too here. This could change in the future.
 		-->
-		<otel_instrumentation.version>2.28.0</otel_instrumentation.version>
+		<otel_instrumentation.version>2.33.1</otel_instrumentation.version>
 		<otel_agent_for_testing.version>${otel_instrumentation.version}-alpha</otel_agent_for_testing.version>
 		<poi_version>4.1.2</poi_version>
 		<poi_ooxml_schemas_version>1.4</poi_ooxml_schemas_version>
@@ -1138,7 +1136,7 @@
 		<servicemix_xmlresolver_version>1.2_5</servicemix_xmlresolver_version>
 		<swagger_jakarta_version>2.2.30</swagger_jakarta_version>
 		<slf4j_version>2.0.16</slf4j_version>
-		<log4j_to_slf4j_version>2.24.1</log4j_to_slf4j_version>
+		<log4j_to_slf4j_version>2.26.1</log4j_to_slf4j_version>
 		<spring_version>6.2.19</spring_version>
 		<spring_data_bom_version>2025.0.13</spring_data_bom_version>
 		<spring_framework_bom_version>6.2.19</spring_framework_bom_version>
@@ -1897,7 +1895,7 @@
 			<dependency>
 				<groupId>org.codehaus.plexus</groupId>
 				<artifactId>plexus-utils</artifactId>
-				<version>3.1.0</version>
+				<version>3.6.1</version>
 			</dependency>
 			<dependency>
 				<groupId>com.fasterxml.woodstox</groupId>
@@ -2183,7 +2181,7 @@
 			<dependency>
 				<groupId>org.elasticsearch</groupId>
 				<artifactId>elasticsearch</artifactId>
-				<version>8.9.2</version>
+				<version>${elasticsearch_version}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.hibernate.search</groupId>
@@ -2244,7 +2242,7 @@
 			<dependency>
 				<groupId>org.mariadb.jdbc</groupId>
 				<artifactId>mariadb-java-client</artifactId>
-				<version>3.3.5</version>
+				<version>3.3.7</version>
 			</dependency>
 			<dependency>
 				<groupId>org.mockito</groupId>
@@ -2523,7 +2521,7 @@
 			<dependency>
 				<groupId>org.assertj</groupId>
 				<artifactId>assertj-core</artifactId>
-				<version>3.22.0</version>
+				<version>3.27.7</version>
 			</dependency>
 			<dependency>
 				<groupId>org.assertj</groupId>

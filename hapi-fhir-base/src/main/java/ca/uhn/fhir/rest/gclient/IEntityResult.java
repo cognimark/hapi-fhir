@@ -19,7 +19,7 @@
  */
 package ca.uhn.fhir.rest.gclient;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
+import jakarta.annotation.Nonnull;
 
 import java.io.InputStream;
 import java.util.List;
@@ -32,7 +32,7 @@ public interface IEntityResult {
 
 	String getMimeType();
 
-	@NonNull
+	@Nonnull
 	/**
 	 * Gets the response body as an InputStream.
 	 *
@@ -46,6 +46,6 @@ public interface IEntityResult {
 
 	int getStatusCode();
 
-	@NonNull
+	@Nonnull
 	Map<String, List<String>> getHeaders();
 }
