@@ -1,0 +1,73 @@
+name: Cognimark dependency qualification
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master, compliance/2026-11-03-source-dependencies]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-qualification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-client-migrations:
+    if: github.repository == 'cognimark/hapi-fhir'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      MAVEN_OPTS: -Xmx2g -XX:ActiveProcessorCount=2
+      MAVEN_IMAGE: maven@sha256:c3c9d3ac4ce8431a3995c0318b8d390f448e693dd4fabc16e9b68d2e1f3d7b46
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Run core, client, server and embedded migration tests
+        run: |
+          docker run --rm --network host \
+            -v "$PWD:$PWD" -w "$PWD" -v "$HOME/.m2:/root/.m2" \
+            -e MAVEN_OPTS "$MAVEN_IMAGE" \
+            mvn -B -ntp -pl hapi-fhir-client,hapi-fhir-sql-migrate -am \
+            '-Dtest=*,!**/containertests/*' -Dsurefire.failIfNoSpecifiedTests=false test
+      - name: Preserve non-container test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: core-client-embedded-migration-tests
+          path: '**/target/surefire-reports/TEST-*.xml'
+          if-no-files-found: error
+          retention-days: 30
+      - name: Run real PostgreSQL 16 migration tests
+        run: |
+          docker info >/dev/null
+          docker run --rm --network host \
+            -v "$PWD:$PWD" -w "$PWD" -v "$HOME/.m2:/root/.m2" \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -e MAVEN_OPTS "$MAVEN_IMAGE" \
+            mvn -B -ntp -pl hapi-fhir-sql-migrate -am \
+            -Dtest=Postgres16CollectedMigrationTest -Dsurefire.failIfNoSpecifiedTests=false test
+      - name: Reject silently skipped database tests
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+          reports = list(pathlib.Path('hapi-fhir-sql-migrate/target/surefire-reports').glob(
+              'TEST-*Postgres16CollectedMigrationTest.xml'))
+          assert len(reports) == 1, 'Expected exactly one PostgreSQL migration report'
+          suite = ET.parse(reports[0]).getroot()
+          assert int(suite.attrib['tests']) > 0, 'No PostgreSQL tests executed'
+          for field in ('failures', 'errors', 'skipped'):
+              assert int(suite.attrib.get(field, '0')) == 0, f'PostgreSQL {field}'
+          PY
+      - name: Preserve PostgreSQL test report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: postgres16-migration-tests
+          path: hapi-fhir-sql-migrate/target/surefire-reports/TEST-*Postgres16CollectedMigrationTest.xml
+          if-no-files-found: error
+          retention-days: 30

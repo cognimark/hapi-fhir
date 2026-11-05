@@ -5,6 +5,7 @@ on:
 
 jobs:
   load-config-and-run:
+    if: github.repository == 'hapifhir/hapi-fhir'
     runs-on: ubuntu-latest
 
     steps:
@@ -38,6 +39,7 @@ jobs:
   # target branch (GL-8831). Only files ADDED in this PR are enforced — pre-existing entries are never
   # re-validated, and edits to existing entries (e.g. a typo fix in an older release dir) are allowed.
   changelog-location:
+    if: github.repository == 'hapifhir/hapi-fhir'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

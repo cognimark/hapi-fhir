@@ -7,6 +7,7 @@ on:
 
 jobs:
   format-check:
+    if: github.repository == 'hapifhir/hapi-fhir'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
