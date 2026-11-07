@@ -284,7 +284,9 @@ public class ActiveJobInstanceProcessor {
 
 	protected PagingIterator<WorkChunkMetadata> getReadyChunks() {
 		return new PagingIterator<>(WORK_CHUNK_METADATA_BATCH_SIZE, (index, batchsize, consumer) -> {
-			Pageable pageable = Pageable.ofSize(batchsize).withPage(index);
+			// Dispatch removes each page from READY. Advancing an offset through
+			// that shrinking set skips chunks until another maintenance pass.
+			Pageable pageable = Pageable.ofSize(batchsize);
 			Page<WorkChunkMetadata> results = myJobPersistence.fetchAllWorkChunkMetadataForJobInStates(
 					pageable, myInstanceId, Set.of(WorkChunkStatusEnum.READY));
 			for (WorkChunkMetadata metadata : results) {

@@ -52,7 +52,6 @@ import ca.uhn.fhir.jpa.entity.Batch2JobAttachmentEntity;
 import ca.uhn.fhir.jpa.entity.Batch2JobInstanceEntity;
 import ca.uhn.fhir.jpa.entity.Batch2WorkChunkEntity;
 import ca.uhn.fhir.jpa.entity.Batch2WorkChunkMetadataView;
-import ca.uhn.fhir.model.api.PagingIterator;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
@@ -535,27 +534,26 @@ public class JpaJobPersistenceImpl implements IJobPersistence {
 		return instance.get();
 	}
 
-	private void fetchChunks(
-			String theInstanceId,
-			boolean theIncludeData,
-			int thePageSize,
-			int thePageIndex,
-			Consumer<WorkChunk> theConsumer) {
-		myTransactionService
+	private List<WorkChunk> fetchChunkPage(
+			String theInstanceId, boolean theIncludeData, int thePageSize, int theAfterSequence, String theAfterId) {
+		return myTransactionService
 				.withSystemRequestOnDefaultPartition()
 				.withPropagation(Propagation.REQUIRES_NEW)
 				.execute(() -> {
 					List<Batch2WorkChunkEntity> chunks;
+					Pageable firstPage = PageRequest.of(0, thePageSize);
 					if (theIncludeData) {
-						chunks = myWorkChunkRepository.fetchChunks(
-								PageRequest.of(thePageIndex, thePageSize), theInstanceId);
+						chunks = theAfterId == null
+								? myWorkChunkRepository.fetchChunks(firstPage, theInstanceId)
+								: myWorkChunkRepository.fetchChunksAfter(
+										firstPage, theInstanceId, theAfterSequence, theAfterId);
 					} else {
-						chunks = myWorkChunkRepository.fetchChunksNoData(
-								PageRequest.of(thePageIndex, thePageSize), theInstanceId);
+						chunks = theAfterId == null
+								? myWorkChunkRepository.fetchChunksNoData(firstPage, theInstanceId)
+								: myWorkChunkRepository.fetchChunksNoDataAfter(
+										firstPage, theInstanceId, theAfterSequence, theAfterId);
 					}
-					for (Batch2WorkChunkEntity chunk : chunks) {
-						theConsumer.accept(toChunk(chunk));
-					}
+					return chunks.stream().map(this::toChunk).toList();
 				});
 	}
 
@@ -577,8 +575,43 @@ public class JpaJobPersistenceImpl implements IJobPersistence {
 	 */
 	@Override
 	public Iterator<WorkChunk> fetchAllWorkChunksIterator(String theInstanceId, boolean theWithData) {
-		return new PagingIterator<>((thePageIndex, theBatchSize, theConsumer) ->
-				fetchChunks(theInstanceId, theWithData, theBatchSize, thePageIndex, theConsumer));
+		// Keep payload-bearing pages at their original bound. Progress scans
+		// fetch metadata only and can use larger pages without loading CLOBs.
+		int pageSize = theWithData ? 100 : 1000;
+		return new Iterator<>() {
+			private List<WorkChunk> myPage = List.of();
+			private int myPosition;
+			private boolean myFinished;
+			private int myAfterSequence;
+			private String myAfterId;
+
+			@Override
+			public boolean hasNext() {
+				if (myPosition < myPage.size()) {
+					return true;
+				}
+				if (myFinished) {
+					return false;
+				}
+				myPage = fetchChunkPage(theInstanceId, theWithData, pageSize, myAfterSequence, myAfterId);
+				myPosition = 0;
+				myFinished = myPage.size() < pageSize;
+				if (!myPage.isEmpty()) {
+					WorkChunk last = myPage.get(myPage.size() - 1);
+					myAfterSequence = last.getSequence();
+					myAfterId = last.getId();
+				}
+				return !myPage.isEmpty();
+			}
+
+			@Override
+			public WorkChunk next() {
+				if (!hasNext()) {
+					throw new java.util.NoSuchElementException();
+				}
+				return myPage.get(myPosition++);
+			}
+		};
 	}
 
 	@Override

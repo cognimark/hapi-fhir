@@ -11,7 +11,7 @@
 	</parent>
 
 	<artifactId>hapi-fhir-jpaserver-base</artifactId>
-	<version>8.12.1-cognimark.12</version>
+	<version>8.12.1-cognimark.13</version>
 	<packaging>jar</packaging>
 
 	<name>HAPI FHIR JPA Server</name>
@@ -152,12 +152,12 @@
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-storage-batch2</artifactId>
-			<version>8.12.1-cognimark.3</version>
+			<version>8.12.1-cognimark.4</version>
 		</dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-storage-batch2-jobs</artifactId>
-			<version>8.12.1-cognimark.6</version>
+			<version>8.12.1-cognimark.7</version>
 		</dependency>
 
 		<dependency>

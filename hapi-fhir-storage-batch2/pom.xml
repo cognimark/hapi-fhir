@@ -13,7 +13,7 @@
 	</parent>
 
 	<artifactId>hapi-fhir-storage-batch2</artifactId>
-	<version>8.12.1-cognimark.3</version>
+	<version>8.12.1-cognimark.4</version>
 	<packaging>jar</packaging>
 
 	<name>HAPI FHIR JPA Server - Batch2 Task Processor</name>
@@ -51,7 +51,7 @@
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-jpa</artifactId>
-			<version>${project.version}</version>
+			<version>8.12.1-cognimark.3</version>
 		</dependency>
 
 		<dependency>

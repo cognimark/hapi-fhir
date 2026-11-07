@@ -54,7 +54,7 @@ import static org.apache.commons.lang3.StringUtils.left;
 @Table(
 		name = "BT2_WORK_CHUNK",
 		indexes = {
-			@Index(name = "IDX_BT2WC_II_SEQ", columnList = "INSTANCE_ID,SEQ"),
+			@Index(name = "IDX_BT2WC_II_SEQ_ID", columnList = "INSTANCE_ID,SEQ,ID"),
 			@Index(name = "IDX_BT2WC_II_SI_S_SEQ_ID", columnList = "INSTANCE_ID,TGT_STEP_ID,STAT,SEQ,ID")
 		})
 public class Batch2WorkChunkEntity implements Serializable {
