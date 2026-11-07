@@ -60,9 +60,9 @@ setup and its documentation were prepared with Codex assistance.
 The model artifact remains `8.12.1-cognimark.1`. The
 `hapi-fhir-base` artifact is `8.12.1-cognimark.2`. The scheduler (`hapi-fhir-jpa`)
 uses `8.12.1-cognimark.3`; Batch2 uses `8.12.1-cognimark.4`. The custom
-storage, search-parameter, Batch2-job and `hapi-fhir-jpaserver-base` artifacts
-use `8.12.1-cognimark.6`, except `hapi-fhir-jpaserver-base`, which uses
-`8.12.1-cognimark.13`; other upstream
+storage and search-parameter artifacts use `8.12.1-cognimark.6`; Batch2 jobs use
+`8.12.1-cognimark.7` and depend on the `.4` Batch2 runtime.
+`hapi-fhir-jpaserver-base` uses `8.12.1-cognimark.13`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 Core's HAPI service explicitly selects each qualified custom artifact with dependency management.
