@@ -157,7 +157,7 @@
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-storage-batch2-jobs</artifactId>
-			<version>8.12.1-cognimark.6</version>
+			<version>8.12.1-cognimark.7</version>
 		</dependency>
 
 		<dependency>
