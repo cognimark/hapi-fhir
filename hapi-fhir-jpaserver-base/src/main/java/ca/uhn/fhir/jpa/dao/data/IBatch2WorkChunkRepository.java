@@ -72,6 +72,27 @@ public interface IBatch2WorkChunkRepository
 			+ ") FROM Batch2WorkChunkEntity e WHERE e.myInstanceId = :instanceId ORDER BY e.mySequence ASC, e.myId ASC")
 	List<Batch2WorkChunkEntity> fetchChunksNoData(Pageable thePageRequest, @Param("instanceId") String theInstanceId);
 
+	@Query("SELECT e FROM Batch2WorkChunkEntity e WHERE e.myInstanceId = :instanceId "
+			+ "AND (e.mySequence, e.myId) > (:afterSequence, :afterId) ORDER BY e.mySequence ASC, e.myId ASC")
+	List<Batch2WorkChunkEntity> fetchChunksAfter(
+			Pageable thePageRequest,
+			@Param("instanceId") String theInstanceId,
+			@Param("afterSequence") int theAfterSequence,
+			@Param("afterId") String theAfterId);
+
+	@Query("SELECT new Batch2WorkChunkEntity("
+			+ "e.myId, e.mySequence, e.myJobDefinitionId, e.myJobDefinitionVersion, e.myInstanceId, e.myTargetStepId, e.myStatus,"
+			+ "e.myCreateTime, e.myStartTime, e.myUpdateTime, e.myEndTime,"
+			+ "e.myErrorMessage, e.myErrorCount, e.myRecordsProcessed, e.myWarningMessage,"
+			+ "e.myNextPollTime, e.myPollAttempts, e.myLastHeartbeat"
+			+ ") FROM Batch2WorkChunkEntity e WHERE e.myInstanceId = :instanceId "
+			+ "AND (e.mySequence, e.myId) > (:afterSequence, :afterId) ORDER BY e.mySequence ASC, e.myId ASC")
+	List<Batch2WorkChunkEntity> fetchChunksNoDataAfter(
+			Pageable thePageRequest,
+			@Param("instanceId") String theInstanceId,
+			@Param("afterSequence") int theAfterSequence,
+			@Param("afterId") String theAfterId);
+
 	@Query(
 			"SELECT DISTINCT e.myStatus from Batch2WorkChunkEntity e where e.myInstanceId = :instanceId AND e.myTargetStepId = :stepId")
 	Set<WorkChunkStatusEnum> getDistinctStatusesForStep(

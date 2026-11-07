@@ -59,10 +59,10 @@ setup and its documentation were prepared with Codex assistance.
 
 The model artifact remains `8.12.1-cognimark.1`. The
 `hapi-fhir-base` artifact is `8.12.1-cognimark.2`. The scheduler (`hapi-fhir-jpa`)
-and Batch2 artifacts use `8.12.1-cognimark.3`. The custom
+uses `8.12.1-cognimark.3`; Batch2 uses `8.12.1-cognimark.4`. The custom
 storage, search-parameter, Batch2-job and `hapi-fhir-jpaserver-base` artifacts
 use `8.12.1-cognimark.6`, except `hapi-fhir-jpaserver-base`, which uses
-`8.12.1-cognimark.12`; other upstream
+`8.12.1-cognimark.13`; other upstream
 dependencies remain 8.12.1.
 Do not publish modified binaries using the unmodified upstream coordinates.
 Core's HAPI service explicitly selects each qualified custom artifact with dependency management.
@@ -190,7 +190,8 @@ mvn -B -ntp -f cognimark/batch2-tests/pom.xml test
 ```
 
 The focused suite runs the real Spring/Quartz scheduler against packaged JARs.
-Override `-Dcognimark.hapi.batch.version=8.12.1` to reproduce six failing checks
+Override `-Dcognimark.hapi.batch.version=8.12.1`
+and `-Dcognimark.hapi.scheduler.version=8.12.1` to reproduce six failing checks
 against the official baseline. All eight checks pass with the patch: explicit
 and default groups, success and exception cleanup, repeated cancellation without
 affecting another chunk, absent chunks, active ticks stopping after close, and
@@ -201,6 +202,31 @@ lost with the in-memory broker; the expanded Core regression must also interrupt
 queued and executing work before claiming general restart recovery.
 
 ## Local work recovery and partition-aware reindex
+
+### Bounded progress traversal and READY dispatch
+
+The `.13` JPA server library traverses work chunks with a `(sequence, id)`
+cursor within one job. Metadata pages contain at most 1,000 chunks and exclude
+payload columns; payload-bearing pages retain their 100-chunk limit. Each page
+uses a short transaction and is converted before that transaction closes.
+Repeated sequence numbers use the immutable ID as the tie-breaker. Deleting an
+earlier page does not shift the cursor or skip later chunks. This is a live
+traversal, not a transaction-wide snapshot; subsequent maintenance passes still
+reconcile concurrent work.
+
+The `.4` Batch2 library fetches the first remaining READY page after dispatching
+the preceding page. Advancing an offset through a shrinking READY set previously
+skipped work until the next maintenance pass. Dispatch still uses the existing
+transactional READY-to-QUEUED transition and bounded broker; retries, ownership,
+job parameters and recovery are unchanged.
+
+The entity declares `IDX_BT2WC_II_SEQ_ID(INSTANCE_ID,SEQ,ID)` in place of the
+two-column sequence index. Core owns its explicit online schema migration and
+packaged PostgreSQL/restart qualification. A library test pass does not establish
+deployment acceptance. Regression tests reproduce skipped READY work and skipped
+iterator rows against the previous artifacts before passing with the new ones.
+
+### Single-owner recovery
 
 `LocalBatch2WorkRecovery` is an explicit single-owner deployment facility, not
 automatic cluster failover. Invoke it once before native scheduling starts and

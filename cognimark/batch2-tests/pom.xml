@@ -7,14 +7,15 @@
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <cognimark.hapi.batch.version>8.12.1-cognimark.3</cognimark.hapi.batch.version>
+        <cognimark.hapi.batch.version>8.12.1-cognimark.4</cognimark.hapi.batch.version>
+        <cognimark.hapi.scheduler.version>8.12.1-cognimark.3</cognimark.hapi.scheduler.version>
     </properties>
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>ca.uhn.hapi.fhir</groupId>
                 <artifactId>hapi-fhir-jpa</artifactId>
-                <version>${cognimark.hapi.batch.version}</version>
+                <version>${cognimark.hapi.scheduler.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -65,6 +66,7 @@
                 <configuration>
                     <testIncludes>
                         <testInclude>**/WorkChunkHeartbeatServiceTest.java</testInclude>
+                        <testInclude>**/ReadyChunkPagingTest.java</testInclude>
                     </testIncludes>
                 </configuration>
             </plugin>
